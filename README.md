@@ -51,17 +51,35 @@ Level digambar dengan karakter teks, 1 karakter = 1 tile 16×16 px.
 
 Tinggi lompatan maksimal ±4 tile, jarak lompat ±6 tile — jaga supaya rintangan masih bisa dilewati.
 
-## Struktur & pemilik file
+## Struktur scene
+
+Setiap objek game punya scene sendiri di folder `scenes/`, dengan script pasangan di `scripts/`.
+Buka scene-nya di Godot untuk melihat node dan collision-nya; tampilannya juga muncul di editor.
+
+| Scene | Node utama | Isi | Script |
+|---|---|---|---|
+| `main.tscn` | Node2D | SkyLayer, World (LevelArt + objek level), HUD, InfoPopup, SelectScreen | `main.gd` |
+| `player.tscn` | CharacterBody2D | CollisionShape2D, Camera2D | `player.gd` |
+| `enemy.tscn` | CharacterBody2D | CollisionShape2D, EdgeRay (RayCast2D), Hitbox (Area2D) | `enemy.gd` |
+| `coin.tscn` | Area2D | CollisionShape2D (bintang) | `coin.gd` |
+| `member_sign.tscn` | Area2D | CollisionShape2D (papan anggota / checkpoint) | `member_sign.gd` |
+| `finish_flag.tscn` | Area2D | CollisionShape2D | `finish_flag.gd` |
+
+`main.gd` membaca `data/level1.txt`, lalu meng-instance scene di atas sesuai huruf di peta.
+Angka gerak player (Speed, Jump Velocity, Gravity) dan musuh (Speed) bisa diubah lewat **Inspector**.
+
+## Pemilik file
+
 | File | Isi | Pemilik |
 |---|---|---|
-| `scripts/player.gd` | fisika lari, lompat, karakter berkepala foto | Programmer |
-| `scripts/enemy.gd` | musuh & logika injak | Programmer |
-| `scripts/main.gd` | alur game, pembaca level, kamera, HUD | Programmer |
+| `scenes/player.tscn`, `scripts/player.gd` | fisika lari, lompat, karakter berkepala foto | Programmer |
+| `scenes/enemy.tscn`, `scripts/enemy.gd` | musuh & logika injak | Programmer |
+| `scripts/main.gd`, `scenes/main.tscn` | alur game, pembaca level, kamera, HUD | Programmer |
 | `scripts/select_screen.gd`, `scripts/info_popup.gd` | layar pilih karakter & kartu anggota | Programmer / Artist |
 | `scripts/level_art.gd`, `scripts/sky.gd` | gambar tile & latar parallax | Artist |
 | `scripts/ui.gd`, `scripts/fx.gd`, `assets/fonts/*` | palet warna, font, efek partikel | Artist |
 | `scripts/photo_util.gd`, `tools/pixelate.py`, `assets/photos/*` | foto pixel | Artist |
-| `scripts/pickups.gd` | bintang, papan anggota, bendera | Project + Level |
+| `scenes/coin.tscn`, `scenes/member_sign.tscn`, `scenes/finish_flag.tscn` + script-nya | bintang, papan anggota, bendera | Project + Level |
 | `data/level1.txt`, `data/team.json` | desain level & data tim | Project + Level |
 
 ## Alur kolaborasi GitHub

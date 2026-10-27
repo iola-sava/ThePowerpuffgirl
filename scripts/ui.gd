@@ -1,3 +1,4 @@
+@tool
 class_name UI
 extends RefCounted
 ## Palet warna, font, dan fungsi gambar bersama (gaya pastel lucu).

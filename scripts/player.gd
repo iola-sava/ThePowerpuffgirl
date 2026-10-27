@@ -1,19 +1,23 @@
+@tool
 class_name Player
 extends CharacterBody2D
+## Scene: res://scenes/player.tscn
 ## Karakter platformer. Kepalanya = foto pixel anggota yang dipilih.
 ## Gerak: A/D atau panah • Lompat: Spasi / W / panah atas
+## Angka gerak bisa diubah di Inspector (klik node Player).
 
 signal died
 
-const SPEED := 130.0
-const ACCEL := 900.0
-const JUMP_V := -360.0
-const GRAVITY := 900.0
-const MAX_FALL := 480.0
+@export var speed := 130.0
+@export var jump_velocity := -360.0
+@export var gravity := 900.0
+@export var acceleration := 900.0
+@export var max_fall := 480.0
+
 const JUMP_KEYS := [KEY_SPACE, KEY_W, KEY_UP, KEY_K]
 
 var photo: Texture2D
-var color := Color("#4361ee")
+var color := Color("#ff8fc1")
 var facing := 1.0
 var invuln := 0.0
 var fall_limit := 100000.0
@@ -25,19 +29,12 @@ var _idle := 0.0
 var _squash := Vector2.ONE
 
 
-func _ready() -> void:
-	collision_layer = 2
-	collision_mask = 1
-	floor_snap_length = 4.0
-	var cs := CollisionShape2D.new()
-	var r := RectangleShape2D.new()
-	r.size = Vector2(10, 20)
-	cs.shape = r
-	cs.position = Vector2(0, -10)
-	add_child(cs)
+@onready var camera: Camera2D = $Camera2D
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if Engine.is_editor_hint():
+		return
 	if event is InputEventKey and event.pressed and not event.echo \
 			and event.physical_keycode in JUMP_KEYS:
 		_buffer = 0.12
@@ -51,25 +48,27 @@ func _jump_held() -> bool:
 
 
 func _physics_process(delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
 	var dir := Input.get_axis("ui_left", "ui_right")
 	if dir == 0.0:
 		dir = float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A))
-	velocity.x = move_toward(velocity.x, dir * SPEED, ACCEL * delta)
+	velocity.x = move_toward(velocity.x, dir * speed, acceleration * delta)
 	if dir != 0.0:
 		facing = signf(dir)
 
 	_coyote = 0.1 if is_on_floor() else _coyote - delta
 	_buffer -= delta
-	velocity.y = minf(velocity.y + GRAVITY * delta, MAX_FALL)
+	velocity.y = minf(velocity.y + gravity * delta, max_fall)
 
 	if _buffer > 0.0 and _coyote > 0.0:
-		velocity.y = JUMP_V
+		velocity.y = jump_velocity
 		_buffer = 0.0
 		_coyote = 0.0
 		_squash = Vector2(0.75, 1.3)
 		Fx.burst(get_parent(), global_position, Color.WHITE, 5, 40.0)
 	elif velocity.y < 0.0 and not _jump_held():
-		velocity.y += GRAVITY * delta * 1.5  # lompat pendek kalau tombol dilepas
+		velocity.y += gravity * delta * 1.5  # lompat pendek kalau tombol dilepas
 
 	var was_air := not is_on_floor()
 	move_and_slide()
@@ -88,7 +87,7 @@ func _physics_process(delta: float) -> void:
 
 
 func bounce() -> void:
-	velocity.y = JUMP_V * 0.7
+	velocity.y = jump_velocity * 0.7
 
 
 func hit() -> void:

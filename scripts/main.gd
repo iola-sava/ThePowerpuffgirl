@@ -1,15 +1,23 @@
 extends Node2D
+## Scene: res://scenes/main.tscn
 ## Micro game "Team Intro" versi platformer.
 ## Pilih karakter (kepalanya foto anggota) -> lari & lompat -> temui papan tiap
 ## anggota (checkpoint) -> kumpulkan koin -> sentuh bendera finish.
 ##
 ## Data anggota : res://data/team.json
 ## Peta level   : res://data/level1.txt  (lihat legenda di README)
+## Objek di level dibuat dari scene terpisah (folder scenes/).
 
 const TILE := 16
 const DATA_PATH := "res://data/team.json"
 const LEVEL_PATH := "res://data/level1.txt"
 const PHOTO_PIXELS := 20
+
+const PLAYER_SCENE := preload("res://scenes/player.tscn")
+const ENEMY_SCENE := preload("res://scenes/enemy.tscn")
+const COIN_SCENE := preload("res://scenes/coin.tscn")
+const MEMBER_SIGN_SCENE := preload("res://scenes/member_sign.tscn")
+const FINISH_FLAG_SCENE := preload("res://scenes/finish_flag.tscn")
 
 enum State { SELECT, PLAY, POPUP, END }
 
@@ -19,13 +27,15 @@ var members: Array = []
 var photos: Array = []
 var colors: Array = []
 
-var world: Node2D
-var player: Player
-var popup: InfoPopup
-var select_screen: SelectScreen
-var hud: Control
+@onready var world: Node2D = $World
+@onready var level_art: LevelArt = $World/LevelArt
+@onready var popup: InfoPopup = $InfoPopup
+@onready var select_screen: SelectScreen = $SelectScreen
+@onready var hud_layer: CanvasLayer = $HUD
 
-var member_posts: Array[Pickup] = []
+var player: Player
+var hud: Control
+var member_posts: Array[MemberSign] = []
 var coins := 0
 var total_coins := 0
 var respawn_point := Vector2.ZERO
@@ -34,33 +44,16 @@ var chosen_index := 0
 
 
 func _ready() -> void:
-	process_mode = Node.PROCESS_MODE_ALWAYS
 	_load_data()
-
-	var sky_layer := CanvasLayer.new()
-	sky_layer.layer = -10
-	var sky := Node2D.new()
-	sky.set_script(load("res://scripts/sky.gd"))
-	sky_layer.add_child(sky)
-	add_child(sky_layer)
-
-	world = Node2D.new()
-	world.process_mode = Node.PROCESS_MODE_PAUSABLE
-	add_child(world)
 	_build_level()
 	_spawn_player()
 	_build_hud()
 
-	popup = InfoPopup.new()
-	add_child(popup)
-
-	select_screen = SelectScreen.new()
 	select_screen.team_name = team_name
 	select_screen.members = members
 	select_screen.photos = photos
 	select_screen.colors = colors
 	select_screen.chosen.connect(_on_character_chosen)
-	add_child(select_screen)
 
 	get_tree().paused = true
 	_update_hud()
@@ -104,32 +97,32 @@ func _build_level() -> void:
 				"#", "B", "-":
 					tiles[cell] = ch
 				"o":
-					_spawn_pickup(Pickup.Kind.COIN, foot)
+					var coin: Coin = _spawn(COIN_SCENE, foot)
+					coin.collected.connect(_on_coin_collected)
 					total_coins += 1
 				"1", "2", "3", "4", "5", "6", "7", "8", "9":
 					var idx := int(ch) - 1
 					if idx < members.size():
-						var p := _spawn_pickup(Pickup.Kind.MEMBER, foot)
-						p.index = idx
-						p.data = members[idx]
-						p.color = colors[idx]
-						p.photo = photos[idx]
-						member_posts.append(p)
+						var post: MemberSign = MEMBER_SIGN_SCENE.instantiate()
+						post.index = idx
+						post.data = members[idx]
+						post.color = colors[idx]
+						post.photo = photos[idx]
+						post.position = foot
+						post.reached.connect(_on_member_reached)
+						world.add_child(post)
+						member_posts.append(post)
 				"e":
-					var e := Enemy.new()
-					e.position = foot
-					world.add_child(e)
+					_spawn(ENEMY_SCENE, foot)
 				"P":
 					respawn_point = foot
 				"F":
-					var fl := _spawn_pickup(Pickup.Kind.FINISH, foot)
-					fl.color = Color("#e76f51")
+					var flag: FinishFlag = _spawn(FINISH_FLAG_SCENE, foot)
+					flag.reached.connect(_on_finish_reached)
 	level_size = Vector2i(w, rows.size())
 
-	var art := LevelArt.new()
-	art.tiles = tiles
-	world.add_child(art)
-	world.move_child(art, 0)
+	level_art.tiles = tiles
+	level_art.queue_redraw()
 
 	# collider: gabungkan tile berurutan dalam satu baris
 	for y in level_size.y:
@@ -166,45 +159,32 @@ func _add_block(r: Rect2, one_way: bool) -> void:
 	world.add_child(body)
 
 
-func _spawn_pickup(kind: Pickup.Kind, pos: Vector2) -> Pickup:
-	var p := Pickup.new()
-	p.kind = kind
-	p.position = pos
-	p.touched.connect(_on_pickup_touched)
-	world.add_child(p)
-	return p
+func _spawn(scene: PackedScene, pos: Vector2) -> Node2D:
+	var node: Node2D = scene.instantiate()
+	node.position = pos
+	world.add_child(node)
+	return node
 
 
 func _spawn_player() -> void:
-	player = Player.new()
+	player = PLAYER_SCENE.instantiate()
 	player.position = respawn_point
 	player.photo = photos[0]
 	player.color = colors[0]
 	player.fall_limit = level_size.y * TILE + 48
 	player.died.connect(_on_player_died)
 	world.add_child(player)
-
-	var cam := Camera2D.new()
-	cam.limit_left = 0
-	cam.limit_top = 0
-	cam.limit_right = level_size.x * TILE
-	cam.limit_bottom = level_size.y * TILE
-	cam.position_smoothing_enabled = true
-	cam.position_smoothing_speed = 8.0
-	cam.offset = Vector2(0, -24)
-	player.add_child(cam)
+	player.camera.limit_right = level_size.x * TILE
+	player.camera.limit_bottom = level_size.y * TILE
 
 
 # ---------------- HUD ----------------
 func _build_hud() -> void:
-	var layer := CanvasLayer.new()
-	layer.layer = 5
-	add_child(layer)
 	hud = Control.new()
 	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.draw.connect(_draw_hud)
-	layer.add_child(hud)
+	hud_layer.add_child(hud)
 
 
 func _met_count() -> int:
@@ -260,29 +240,33 @@ func _on_character_chosen(i: int) -> void:
 	_update_hud()
 
 
-func _on_pickup_touched(p: Pickup) -> void:
-	if state != State.PLAY:
-		return
-	match p.kind:
-		Pickup.Kind.COIN:
-			coins += 1
-			p.collect()
-		Pickup.Kind.MEMBER:
-			respawn_point = p.global_position
-			if not p.visited:
-				p.visited = true
-				_open_popup.call_deferred(p)
-		Pickup.Kind.FINISH:
-			if _met_count() < member_posts.size():
-				_pause_with_message("Belum lengkap!",
-					"Temui dulu semua anggota tim sebelum finish.", Color("#e76f51"),
-					"Tekan E untuk lanjut")
-			else:
-				_finish.call_deferred()
+func _on_coin_collected(_coin: Coin) -> void:
+	coins += 1
 	_update_hud()
 
 
-func _open_popup(p: Pickup) -> void:
+func _on_member_reached(post: MemberSign) -> void:
+	if state != State.PLAY:
+		return
+	respawn_point = post.global_position
+	if not post.visited:
+		post.visited = true
+		_open_popup.call_deferred(post)
+	_update_hud()
+
+
+func _on_finish_reached(_flag: FinishFlag) -> void:
+	if state != State.PLAY:
+		return
+	if _met_count() < member_posts.size():
+		_pause_with_message("Belum lengkap!",
+			"Temui dulu semua anggota tim sebelum finish.", Color("#e76f51"),
+			"Tekan E untuk lanjut")
+	else:
+		_finish.call_deferred()
+
+
+func _open_popup(p: MemberSign) -> void:
 	state = State.POPUP
 	get_tree().paused = true
 	popup.show_member(p.data, p.photo, p.color, _met_count(), member_posts.size())
@@ -308,7 +292,7 @@ func _finish() -> void:
 	for m in members:
 		lines += "• %s  —  %s\n" % [str(m.get("name", "")), str(m.get("role", ""))]
 	popup.show_message("LEVEL SELESAI!",
-		"%s\n%s\nKoin terkumpul: %d/%d\nSiap berkolaborasi di proyek akhir!" % [
+		"%s\n%s\nBintang terkumpul: %d/%d\nSiap berkolaborasi di proyek akhir!" % [
 			team_name, lines, coins, total_coins],
 		Color("#ffd23f"), "Tekan R untuk main lagi")
 
