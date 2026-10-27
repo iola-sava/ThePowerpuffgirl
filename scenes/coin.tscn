@@ -1,14 +1,21 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/coin.gd" id="1_coin"]
+[ext_resource type="Texture2D" path="res://assets/sprites/star.png" id="2_star"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_coin"]
 radius = 6.0
 
 [node name="Coin" type="Area2D"]
+texture_filter = 2
 collision_layer = 0
 collision_mask = 2
 script = ExtResource("1_coin")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+position = Vector2(0, -8)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("2_star")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(0, -8)

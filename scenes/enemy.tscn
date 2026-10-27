@@ -1,6 +1,11 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/enemy.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://assets/sprites/enemy_0.png" id="2_e0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/enemy_1.png" id="3_e1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/enemy_2.png" id="4_e2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/enemy_3.png" id="5_e3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/enemy_dead.png" id="6_dead"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
 size = Vector2(12, 10)
@@ -8,9 +13,45 @@ size = Vector2(12, 10)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hit"]
 size = Vector2(14, 12)
 
+[sub_resource type="SpriteFrames" id="SpriteFrames_enemy"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2_e0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("3_e1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_e2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_e3")
+}],
+"loop": true,
+"name": &"wobble",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("6_dead")
+}],
+"loop": false,
+"name": &"dead",
+"speed": 5.0
+}]
+
 [node name="Enemy" type="CharacterBody2D"]
+texture_filter = 2
 collision_layer = 4
 script = ExtResource("1_enemy")
+
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, -6)
+scale = Vector2(0.5, 0.5)
+sprite_frames = SubResource("SpriteFrames_enemy")
+animation = &"wobble"
+autoplay = "wobble"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(0, -5)

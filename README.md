@@ -56,14 +56,19 @@ Tinggi lompatan maksimal ±4 tile, jarak lompat ±6 tile — jaga supaya rintang
 Setiap objek game punya scene sendiri di folder `scenes/`, dengan script pasangan di `scripts/`.
 Buka scene-nya di Godot untuk melihat node dan collision-nya; tampilannya juga muncul di editor.
 
-| Scene | Node utama | Isi | Script |
+| Scene | Node utama | Isi (node gambar = Sprite2D / AnimatedSprite2D) | Script |
 |---|---|---|---|
 | `main.tscn` | Node2D | SkyLayer, World (LevelArt + objek level), HUD, InfoPopup, SelectScreen | `main.gd` |
-| `player.tscn` | CharacterBody2D | CollisionShape2D, Camera2D | `player.gd` |
-| `enemy.tscn` | CharacterBody2D | CollisionShape2D, EdgeRay (RayCast2D), Hitbox (Area2D) | `enemy.gd` |
-| `coin.tscn` | Area2D | CollisionShape2D (bintang) | `coin.gd` |
-| `member_sign.tscn` | Area2D | CollisionShape2D (papan anggota / checkpoint) | `member_sign.gd` |
-| `finish_flag.tscn` | Area2D | CollisionShape2D | `finish_flag.gd` |
+| `player.tscn` | CharacterBody2D | CollisionShape2D, Camera2D, Visual (Shadow, Limbs: idle/walk/jump, Shirt, Head: RingWhite, RingColor, Photo) | `player.gd` |
+| `enemy.tscn` | CharacterBody2D | Sprite (wobble/dead), CollisionShape2D, EdgeRay, Hitbox | `enemy.gd` |
+| `coin.tscn` | Area2D | Sprite (bintang), CollisionShape2D | `coin.gd` |
+| `member_sign.tscn` | Area2D | Pole, Board (Back, Front, RingColor, Photo, RoleLabel, Heart, Check), CollisionShape2D | `member_sign.gd` |
+| `finish_flag.tscn` | Area2D | Sprite (wave), CollisionShape2D | `finish_flag.gd` |
+
+Semua gambar ada di `assets/sprites/` (PNG, ukuran 2x; di scene dipakai dengan scale 0.5).
+Gambar bisa diganti langsung dengan PNG buatan sendiri, atau dibuat ulang dengan:
+`godot --path . -s tools/render_sprites.gd`. Saat membuka `main.tscn` di editor, level dari
+`level1.txt` ikut tampil sebagai pratinjau, lengkap dengan penanda o / e / 1-3 / P / F.
 
 `main.gd` membaca `data/level1.txt`, lalu meng-instance scene di atas sesuai huruf di peta.
 Angka gerak player (Speed, Jump Velocity, Gravity) dan musuh (Speed) bisa diubah lewat **Inspector**.
@@ -78,6 +83,7 @@ Angka gerak player (Speed, Jump Velocity, Gravity) dan musuh (Speed) bisa diubah
 | `scripts/select_screen.gd`, `scripts/info_popup.gd` | layar pilih karakter & kartu anggota | Programmer / Artist |
 | `scripts/level_art.gd`, `scripts/sky.gd` | gambar tile & latar parallax | Artist |
 | `scripts/ui.gd`, `scripts/fx.gd`, `assets/fonts/*` | palet warna, font, efek partikel | Artist |
+| `assets/sprites/*`, `tools/render_sprites.gd` | gambar sprite semua objek | Artist |
 | `scripts/photo_util.gd`, `tools/pixelate.py`, `assets/photos/*` | foto pixel | Artist |
 | `scenes/coin.tscn`, `scenes/member_sign.tscn`, `scenes/finish_flag.tscn` + script-nya | bintang, papan anggota, bendera | Project + Level |
 | `data/level1.txt`, `data/team.json` | desain level & data tim | Project + Level |

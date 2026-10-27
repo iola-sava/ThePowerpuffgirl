@@ -1,15 +1,44 @@
+@tool
 class_name LevelArt
 extends Node2D
 ## Menggambar tile level (sekali saja, karena levelnya statis).
 ## '#' tanah kue berumput • 'B' balok permen • '-' platform awan (bisa dilompati dari bawah)
+## Di editor, level dari data/level1.txt ikut ditampilkan sebagai pratinjau,
+## lengkap dengan penanda posisi bintang, musuh, papan anggota, start, dan finish.
 
 const TILE := 16
 const FLOWER_COLS := [Color("#ff8fc1"), Color("#ffffff"), Color("#c3a6ff"), Color("#ffd84d")]
 
 var tiles: Dictionary = {}  # Vector2i -> karakter tile
+var _markers: Dictionary = {}  # khusus pratinjau editor
+
+
+func _ready() -> void:
+	if Engine.is_editor_hint():
+		_load_preview()
+
+
+func _load_preview() -> void:
+	var rows := FileAccess.get_file_as_string("res://data/level1.txt").split("\n")
+	for y in rows.size():
+		var row: String = rows[y].trim_suffix("\r")
+		for x in row.length():
+			var ch := row[x]
+			if ch in ["#", "B", "-"]:
+				tiles[Vector2i(x, y)] = ch
+			elif ch != " ":
+				_markers[Vector2i(x, y)] = ch
+	queue_redraw()
 
 
 func _draw() -> void:
+	if Engine.is_editor_hint():
+		var lw := 0
+		var lh := 0
+		for pos: Vector2i in tiles:
+			lw = maxi(lw, pos.x + 1)
+			lh = maxi(lh, pos.y + 1)
+		draw_rect(Rect2(0, 0, lw * TILE, lh * TILE), Color("#cfeaff"))
 	# urutan: tanah dulu, lalu rumput (supaya lengkungan rumput di atas tanah), lalu lainnya
 	for pos: Vector2i in tiles:
 		if tiles[pos] == "#":
@@ -23,6 +52,8 @@ func _draw() -> void:
 				_draw_candy(_rect(pos))
 			"-":
 				_draw_cloud(_rect(pos), pos)
+	if Engine.is_editor_hint():
+		_draw_markers()
 
 
 func _rect(pos: Vector2i) -> Rect2:
@@ -79,3 +110,13 @@ func _draw_cloud(r: Rect2, pos: Vector2i) -> void:
 	draw_style_box(UI.box(Color.WHITE, 3), body)
 	draw_circle(p + Vector2(5, 2.5), 3.2, Color.WHITE)
 	draw_circle(p + Vector2(11, 2), 3.6, Color.WHITE)
+
+
+func _draw_markers() -> void:
+	var cols := {"o": UI.SUN, "e": Color("#c3a6ff"), "P": Color("#7fdca0"), "F": UI.PINK}
+	for pos: Vector2i in _markers:
+		var ch: String = _markers[pos]
+		var c := Vector2(pos.x * TILE + TILE / 2.0, pos.y * TILE + TILE / 2.0)
+		var col: Color = cols.get(ch, Color("#ff9f6b"))
+		draw_circle(c, 6.0, Color(col, 0.85))
+		draw_string(UI.BOLD, c + Vector2(-8, 3.5), ch, HORIZONTAL_ALIGNMENT_CENTER, 16, 9, UI.INK)

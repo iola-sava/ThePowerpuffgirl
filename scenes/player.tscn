@@ -1,11 +1,59 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
+[ext_resource type="Texture2D" path="res://assets/sprites/shadow.png" id="2_shadow"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player_idle.png" id="3_idle"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player_walk_0.png" id="4_walk0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player_walk_1.png" id="5_walk1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player_walk_2.png" id="6_walk2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player_walk_3.png" id="7_walk3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player_jump.png" id="8_jump"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player_shirt.png" id="9_shirt"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ring_white.png" id="10_ringw"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ring_color.png" id="11_ringc"]
+[ext_resource type="Texture2D" path="res://assets/sprites/face_placeholder.png" id="12_face"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
 size = Vector2(10, 20)
 
+[sub_resource type="SpriteFrames" id="SpriteFrames_limbs"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("3_idle")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("4_walk0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_walk1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_walk2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7_walk3")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("8_jump")
+}],
+"loop": true,
+"name": &"jump",
+"speed": 5.0
+}]
+
 [node name="Player" type="CharacterBody2D"]
+texture_filter = 2
 collision_layer = 2
 floor_snap_length = 4.0
 script = ExtResource("1_player")
@@ -20,3 +68,39 @@ limit_left = 0
 limit_top = 0
 position_smoothing_enabled = true
 position_smoothing_speed = 8.0
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Shadow" type="Sprite2D" parent="Visual"]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("2_shadow")
+
+[node name="Limbs" type="AnimatedSprite2D" parent="Visual"]
+position = Vector2(0, -7)
+scale = Vector2(0.5, 0.5)
+sprite_frames = SubResource("SpriteFrames_limbs")
+animation = &"idle"
+autoplay = "idle"
+
+[node name="Shirt" type="Sprite2D" parent="Visual"]
+modulate = Color(1, 0.560784, 0.756863, 1)
+position = Vector2(0, -6)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("9_shirt")
+
+[node name="Head" type="Node2D" parent="Visual"]
+position = Vector2(0, -20)
+
+[node name="RingWhite" type="Sprite2D" parent="Visual/Head"]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("10_ringw")
+
+[node name="RingColor" type="Sprite2D" parent="Visual/Head"]
+modulate = Color(1, 0.560784, 0.756863, 1)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("11_ringc")
+
+[node name="Photo" type="Sprite2D" parent="Visual/Head"]
+texture_filter = 1
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("12_face")

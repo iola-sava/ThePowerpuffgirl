@@ -1,11 +1,30 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/member_sign.gd" id="1_sign"]
+[ext_resource type="Texture2D" path="res://assets/sprites/sign_pole.png" id="2_pole"]
+[ext_resource type="Texture2D" path="res://assets/sprites/sign_board_back.png" id="3_back"]
+[ext_resource type="Texture2D" path="res://assets/sprites/sign_board_front.png" id="4_front"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ring_color.png" id="5_ring"]
+[ext_resource type="Texture2D" path="res://assets/sprites/face_placeholder.png" id="6_face"]
+[ext_resource type="FontFile" path="res://assets/fonts/Poppins-Bold.ttf" id="7_font"]
+[ext_resource type="Texture2D" path="res://assets/sprites/heart.png" id="8_heart"]
+[ext_resource type="Texture2D" path="res://assets/sprites/check.png" id="9_check"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_sign"]
 size = Vector2(20, 48)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pill"]
+content_margin_left = 5.0
+content_margin_right = 5.0
+bg_color = Color(1, 0.560784, 0.756863, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+anti_aliasing = true
+
 [node name="MemberSign" type="Area2D"]
+texture_filter = 2
 collision_layer = 0
 collision_mask = 2
 script = ExtResource("1_sign")
@@ -13,3 +32,58 @@ script = ExtResource("1_sign")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(0, -24)
 shape = SubResource("RectangleShape2D_sign")
+
+[node name="Pole" type="Sprite2D" parent="."]
+position = Vector2(0, -18)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("2_pole")
+
+[node name="Board" type="Node2D" parent="."]
+position = Vector2(0, -44)
+
+[node name="Back" type="Sprite2D" parent="Board"]
+modulate = Color(1, 0.560784, 0.756863, 1)
+position = Vector2(0, 2)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("3_back")
+
+[node name="Front" type="Sprite2D" parent="Board"]
+position = Vector2(0, 2)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("4_front")
+
+[node name="RingColor" type="Sprite2D" parent="Board"]
+modulate = Color(1, 0.560784, 0.756863, 1)
+position = Vector2(0, 2)
+scale = Vector2(0.53, 0.53)
+texture = ExtResource("5_ring")
+
+[node name="Photo" type="Sprite2D" parent="Board"]
+texture_filter = 1
+position = Vector2(0, 2)
+scale = Vector2(0.556, 0.556)
+texture = ExtResource("6_face")
+
+[node name="RoleLabel" type="Label" parent="Board"]
+offset_left = -17.0
+offset_top = -24.0
+offset_right = 17.0
+offset_bottom = -13.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("7_font")
+theme_override_font_sizes/font_size = 7
+theme_override_styles/normal = SubResource("StyleBoxFlat_pill")
+text = "Peran"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Heart" type="Sprite2D" parent="Board"]
+position = Vector2(0, -34)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("8_heart")
+
+[node name="Check" type="Sprite2D" parent="Board"]
+visible = false
+position = Vector2(13, -10)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("9_check")

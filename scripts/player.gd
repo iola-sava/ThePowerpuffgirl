@@ -1,10 +1,15 @@
-@tool
 class_name Player
 extends CharacterBody2D
 ## Scene: res://scenes/player.tscn
 ## Karakter platformer. Kepalanya = foto pixel anggota yang dipilih.
 ## Gerak: A/D atau panah • Lompat: Spasi / W / panah atas
 ## Angka gerak bisa diubah di Inspector (klik node Player).
+##
+## Node gambar (semua bisa dilihat & diklik di editor):
+##   Visual/Shadow  – bayangan
+##   Visual/Limbs   – kaki & tangan (AnimatedSprite2D: idle, walk, jump)
+##   Visual/Shirt   – baju (warnanya diatur lewat modulate)
+##   Visual/Head    – cincin + foto wajah
 
 signal died
 
@@ -16,25 +21,47 @@ signal died
 
 const JUMP_KEYS := [KEY_SPACE, KEY_W, KEY_UP, KEY_K]
 
-var photo: Texture2D
-var color := Color("#ff8fc1")
+var photo: Texture2D:
+	set(value):
+		photo = value
+		if is_node_ready() and value:
+			_photo_sprite.texture = PhotoUtil.circle(value, 36)
+var color := Color("#ff8fc1"):
+	set(value):
+		color = value
+		if is_node_ready():
+			_apply_color()
 var facing := 1.0
 var invuln := 0.0
 var fall_limit := 100000.0
 
 var _coyote := 0.0
 var _buffer := 0.0
-var _walk := 0.0
-var _idle := 0.0
+var _t := 0.0
 var _squash := Vector2.ONE
 
-
 @onready var camera: Camera2D = $Camera2D
+@onready var _visual: Node2D = $Visual
+@onready var _shadow: Sprite2D = $Visual/Shadow
+@onready var _limbs: AnimatedSprite2D = $Visual/Limbs
+@onready var _shirt: Sprite2D = $Visual/Shirt
+@onready var _head: Node2D = $Visual/Head
+@onready var _ring_color: Sprite2D = $Visual/Head/RingColor
+@onready var _photo_sprite: Sprite2D = $Visual/Head/Photo
+
+
+func _ready() -> void:
+	_apply_color()
+	if photo:
+		_photo_sprite.texture = PhotoUtil.circle(photo, 36)
+
+
+func _apply_color() -> void:
+	_shirt.modulate = color
+	_ring_color.modulate = color
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if Engine.is_editor_hint():
-		return
 	if event is InputEventKey and event.pressed and not event.echo \
 			and event.physical_keycode in JUMP_KEYS:
 		_buffer = 0.12
@@ -48,8 +75,6 @@ func _jump_held() -> bool:
 
 
 func _physics_process(delta: float) -> void:
-	if Engine.is_editor_hint():
-		return
 	var dir := Input.get_axis("ui_left", "ui_right")
 	if dir == 0.0:
 		dir = float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A))
@@ -77,13 +102,30 @@ func _physics_process(delta: float) -> void:
 		Fx.burst(get_parent(), global_position, Color.WHITE, 6, 45.0)
 	_squash = _squash.lerp(Vector2.ONE, 12.0 * delta)
 
-	_idle += delta
-	_walk = _walk + delta * 14.0 if absf(velocity.x) > 10.0 and is_on_floor() else 0.0
 	if invuln > 0.0:
 		invuln -= delta
 	if global_position.y > fall_limit:
 		died.emit()
-	queue_redraw()
+	_update_visual(delta)
+
+
+func _update_visual(delta: float) -> void:
+	_t += delta
+	var on_floor := is_on_floor()
+	var walking := on_floor and absf(velocity.x) > 10.0
+	if not on_floor:
+		_limbs.play("jump")
+	elif walking:
+		_limbs.play("walk")
+	else:
+		_limbs.play("idle")
+	# badan & kepala naik-turun (napas / langkah)
+	var bob := absf(sin(_t * 12.0)) * -1.5 if walking else sin(_t * 3.0) * 0.6
+	_shirt.position.y = -6.0 + bob
+	_head.position.y = -20.0 + bob
+	_shadow.visible = on_floor
+	_visual.scale = _squash
+	_visual.visible = invuln <= 0.0 or int(invuln * 16.0) % 2 == 1
 
 
 func bounce() -> void:
@@ -99,35 +141,3 @@ func respawn(pos: Vector2) -> void:
 	global_position = pos
 	velocity = Vector2.ZERO
 	invuln = 1.2
-
-
-func _draw() -> void:
-	if invuln > 0.0 and int(invuln * 16.0) % 2 == 0:
-		return
-	var on_floor := is_on_floor()
-	# bayangan
-	if on_floor:
-		draw_set_transform(Vector2(0, 0), 0.0, Vector2(1.0, 0.35))
-		draw_circle(Vector2.ZERO, 7.0, Color(0.35, 0.25, 0.45, 0.25))
-	draw_set_transform(Vector2.ZERO, 0.0, _squash)
-	var breathe := sin(_idle * 3.0) * 0.6 if _walk == 0.0 else absf(sin(_walk)) * -1.5
-	var ink := UI.INK
-	# kaki
-	var s := sin(_walk) * 2.5
-	var fy := -2.0 if on_floor else -4.0
-	draw_set_transform(Vector2(-2.5 + s * 0.5, fy), 0.0, _squash * Vector2(1.0, 0.7))
-	draw_circle(Vector2.ZERO, 2.4, ink)
-	draw_set_transform(Vector2(2.5 - s * 0.5, fy), 0.0, _squash * Vector2(1.0, 0.7))
-	draw_circle(Vector2.ZERO, 2.4, ink)
-	draw_set_transform(Vector2.ZERO, 0.0, _squash)
-	# badan
-	var body := Rect2(-5.5, -11 + breathe, 11, 9)
-	draw_style_box(UI.box(color.darkened(0.15), 4), Rect2(body.position + Vector2(0, 1), body.size))
-	draw_style_box(UI.box(color, 4), body)
-	draw_circle(Vector2(0, -6 + breathe), 2.2, color.lightened(0.35))
-	# tangan
-	var arm_y := -12.0 if velocity.y < 0.0 else -7.0 - sin(_walk) * 1.0
-	draw_circle(Vector2(-6.5, arm_y + breathe), 1.9, Color("#ffd9c2"))
-	draw_circle(Vector2(6.5, arm_y + breathe), 1.9, Color("#ffd9c2"))
-	# kepala = foto bulat
-	UI.circle_photo(self, photo, Vector2(0, -20 + breathe), 9.0, color, 1.6)

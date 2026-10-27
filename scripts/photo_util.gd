@@ -51,3 +51,25 @@ static func _placeholder(pixels: int, col: Color) -> Texture2D:
 			elif p.y > pixels * 0.62 and absf(p.x - c.x) < pixels * 0.32:
 				img.set_pixel(x, y, col)
 	return ImageTexture.create_from_image(img)
+
+
+## Foto pixel dijadikan lingkaran (untuk kepala karakter & papan anggota).
+## `diameter` dalam pixel tekstur (sprite dipakai dengan scale 0.5).
+static func circle(tex: Texture2D, diameter: int) -> Texture2D:
+	if tex == null:
+		return null
+	var img := tex.get_image()
+	if img.is_compressed():
+		img.decompress()
+	img.convert(Image.FORMAT_RGBA8)
+	img.resize(diameter, diameter, Image.INTERPOLATE_NEAREST)
+	var c := Vector2(diameter, diameter) / 2.0
+	var r := diameter / 2.0
+	for y in diameter:
+		for x in diameter:
+			var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
+			var a := clampf(r - d, 0.0, 1.0)
+			var col := img.get_pixel(x, y)
+			col.a *= a
+			img.set_pixel(x, y, col)
+	return ImageTexture.create_from_image(img)
