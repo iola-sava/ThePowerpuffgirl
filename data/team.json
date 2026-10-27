@@ -1,0 +1,29 @@
+{
+  "team_name": "Tim Pixel Squad",
+  "members": [
+    {
+      "name": "Nama Anggota 1",
+      "nim": "240533600001",
+      "role": "Programmer",
+      "photo": "res://assets/photos/member1.png",
+      "fact": "Bertanggung jawab atas gameplay, script player, dan sistem interaksi. Suka ngoding sambil dengerin lo-fi.",
+      "color": "#e76f51"
+    },
+    {
+      "name": "Nama Anggota 2",
+      "nim": "240533600002",
+      "role": "Artist",
+      "photo": "res://assets/photos/member2.png",
+      "fact": "Membuat aset visual, palet warna, dan foto pixel tiap anggota. Hobi menggambar karakter chibi.",
+      "color": "#2a9d8f"
+    },
+    {
+      "name": "Nama Anggota 3",
+      "nim": "240533600003",
+      "role": "Project + Level",
+      "photo": "res://assets/photos/member3.png",
+      "fact": "Mendesain layout ruangan, mengatur board Trello, dan memastikan tim tepat deadline.",
+      "color": "#e9c46a"
+    }
+  ]
+}

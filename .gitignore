@@ -1,0 +1,7 @@
+# Godot 4
+.godot/
+/android/
+*.tmp
+
+# Foto asli (non-pixel) jangan di-commit
+assets/photos/raw/
