@@ -1,64 +1,125 @@
 class_name Player
 extends CharacterBody2D
-## Karakter pemain top-down. Gerak: WASD / tombol panah.
+## Karakter platformer. Kepalanya = foto pixel anggota yang dipilih.
+## Gerak: A/D atau panah • Lompat: Spasi / W / panah atas
 
-const SPEED := 110.0
+signal died
 
-var frozen := false
-var facing := Vector2.DOWN
-var _walk_t := 0.0
+const SPEED := 130.0
+const ACCEL := 900.0
+const JUMP_V := -360.0
+const GRAVITY := 900.0
+const MAX_FALL := 480.0
+const JUMP_KEYS := [KEY_SPACE, KEY_W, KEY_UP, KEY_K]
+
+var photo: Texture2D
+var color := Color("#4361ee")
+var facing := 1.0
+var invuln := 0.0
+var fall_limit := 100000.0
+
+var _coyote := 0.0
+var _buffer := 0.0
+var _walk := 0.0
+var _squash := Vector2.ONE
 
 
 func _ready() -> void:
-	collision_layer = 1
+	collision_layer = 2
 	collision_mask = 1
-	var shape := CollisionShape2D.new()
-	var circle := CircleShape2D.new()
-	circle.radius = 6.0
-	shape.shape = circle
-	shape.position = Vector2(0, 4)
-	add_child(shape)
+	floor_snap_length = 4.0
+	var cs := CollisionShape2D.new()
+	var r := RectangleShape2D.new()
+	r.size = Vector2(10, 20)
+	cs.shape = r
+	cs.position = Vector2(0, -10)
+	add_child(cs)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo \
+			and event.physical_keycode in JUMP_KEYS:
+		_buffer = 0.12
+
+
+func _jump_held() -> bool:
+	for k in JUMP_KEYS:
+		if Input.is_physical_key_pressed(k):
+			return true
+	return false
 
 
 func _physics_process(delta: float) -> void:
-	var dir := Vector2.ZERO
-	if not frozen:
-		dir = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
-		if dir == Vector2.ZERO:
-			dir = Vector2(
-				float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)),
-				float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W))
-			).normalized()
+	var dir := Input.get_axis("ui_left", "ui_right")
+	if dir == 0.0:
+		dir = float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A))
+	velocity.x = move_toward(velocity.x, dir * SPEED, ACCEL * delta)
+	if dir != 0.0:
+		facing = signf(dir)
 
-	velocity = dir * SPEED
+	_coyote = 0.1 if is_on_floor() else _coyote - delta
+	_buffer -= delta
+	velocity.y = minf(velocity.y + GRAVITY * delta, MAX_FALL)
+
+	if _buffer > 0.0 and _coyote > 0.0:
+		velocity.y = JUMP_V
+		_buffer = 0.0
+		_coyote = 0.0
+		_squash = Vector2(0.75, 1.3)
+	elif velocity.y < 0.0 and not _jump_held():
+		velocity.y += GRAVITY * delta * 1.5  # lompat pendek kalau tombol dilepas
+
+	var was_air := not is_on_floor()
 	move_and_slide()
+	if was_air and is_on_floor():
+		_squash = Vector2(1.3, 0.75)
+	_squash = _squash.lerp(Vector2.ONE, 12.0 * delta)
 
-	if dir != Vector2.ZERO:
-		facing = dir
-		_walk_t += delta * 12.0
-	else:
-		_walk_t = 0.0
+	_walk = _walk + delta * 14.0 if absf(velocity.x) > 10.0 and is_on_floor() else 0.0
+	if invuln > 0.0:
+		invuln -= delta
+	if global_position.y > fall_limit:
+		died.emit()
 	queue_redraw()
 
 
+func bounce() -> void:
+	velocity.y = JUMP_V * 0.7
+
+
+func hit() -> void:
+	if invuln <= 0.0:
+		died.emit()
+
+
+func respawn(pos: Vector2) -> void:
+	global_position = pos
+	velocity = Vector2.ZERO
+	invuln = 1.2
+
+
 func _draw() -> void:
-	var bob := absf(sin(_walk_t)) * -2.0
-	# bayangan
-	draw_set_transform(Vector2(0, 10), 0.0, Vector2(1.0, 0.4))
-	draw_circle(Vector2.ZERO, 7.0, Color(0, 0, 0, 0.3))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if invuln > 0.0 and int(invuln * 16.0) % 2 == 0:
+		return
+	draw_set_transform(Vector2.ZERO, 0.0, _squash)
+	var dark := Color("#1d1b2e")
 	# kaki
-	var step := sin(_walk_t) * 2.0
-	draw_rect(Rect2(-4, 6 + bob + step * 0.5, 3, 4), Color("#264653"))
-	draw_rect(Rect2(1, 6 + bob - step * 0.5, 3, 4), Color("#264653"))
-	# badan
-	draw_rect(Rect2(-5, -2 + bob, 10, 9), Color("#4361ee"))
-	draw_rect(Rect2(-5, -2 + bob, 10, 2), Color("#6c84ff"))
-	# kepala
-	draw_circle(Vector2(0, -7 + bob), 5.5, Color("#f4c095"))
-	draw_rect(Rect2(-5.5, -13 + bob, 11, 4), Color("#3d2c29"))
-	# mata (tidak terlihat saat menghadap ke atas)
-	if facing.y > -0.6:
-		var ox := facing.x * 1.5
-		draw_rect(Rect2(-3 + ox, -8 + bob, 1.5, 2), Color("#1d1b2e"))
-		draw_rect(Rect2(1.5 + ox, -8 + bob, 1.5, 2), Color("#1d1b2e"))
+	if is_on_floor():
+		var s := sin(_walk) * 2.0
+		draw_rect(Rect2(-4 + s * 0.5, -4, 3, 4), dark)
+		draw_rect(Rect2(1 - s * 0.5, -4, 3, 4), dark)
+	else:
+		draw_rect(Rect2(-4, -5, 3, 3), dark)
+		draw_rect(Rect2(1, -5, 3, 3), dark)
+	# badan + tangan
+	draw_rect(Rect2(-5, -10, 10, 7), color)
+	draw_rect(Rect2(-5, -10, 10, 2), color.lightened(0.3))
+	var arm := -9.0 if velocity.y < 0.0 else -8.0
+	draw_rect(Rect2(-7, arm, 2, 4), Color("#f4c095"))
+	draw_rect(Rect2(5, arm, 2, 4), Color("#f4c095"))
+	# kepala = foto
+	draw_rect(Rect2(-8, -25, 16, 16), dark)
+	if photo:
+		draw_texture_rect(photo, Rect2(-7, -24, 14, 14), false)
+	else:
+		draw_rect(Rect2(-7, -24, 14, 14), Color("#f4c095"))

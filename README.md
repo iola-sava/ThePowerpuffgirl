@@ -1,51 +1,78 @@
-# Team Intro — Micro Game (Godot 4)
+# Team Intro — Micro Game Platformer (Godot 4)
 
-Micro game perkenalan tim proyek akhir. Pemain berjalan di sebuah ruangan, menemui
-podium tiap anggota, dan melihat kartu berisi **Nama, NIM, peran, dan foto wajah
-yang di-pixelate**. Setelah semua anggota ditemui, gerbang di atas terbuka dan
-pemain bisa keluar ke layar ending.
+Micro game perkenalan tim proyek akhir bergaya **platformer side-scrolling**.
+Di awal, pemain **memilih karakter**: tiap karakter berkepala **foto wajah anggota
+yang di-pixelate**, lengkap dengan Nama, NIM, dan peran. Setelah itu pemain berlari
+dan melompat melewati level, mengumpulkan koin, menginjak musuh, dan menemui
+**papan tiap anggota** (sekaligus checkpoint) yang menampilkan kartu perkenalan.
+Bendera finish hanya bisa disentuh setelah semua anggota ditemui.
 
-**Kontrol:** WASD / panah = jalan · E / Spasi / Enter = interaksi · R = main lagi (di ending)
+**Kontrol**
+| Tombol | Fungsi |
+|---|---|
+| A / D atau Kiri / Kanan | jalan, pilih karakter |
+| Spasi / W / Atas | lompat (tahan = lebih tinggi) |
+| E / Spasi / Enter | mulai, tutup kartu |
+| R | main lagi (di layar akhir) |
+
+Jatuh ke jurang atau tersentuh musuh dari samping → muncul lagi di papan anggota terakhir.
 
 ## Cara menjalankan
 1. Install **Godot 4.3+** (versi standar, bukan .NET).
-2. Buka Godot → **Import** → pilih `project.godot` di folder ini.
-3. Tekan **F5** (Run).
+2. Godot → **Import** → pilih `project.godot` → **Import & Edit**.
+3. Tekan **F5**.
 
 ## Mengganti data tim (WAJIB)
-Edit `data/team.json`: ganti `team_name`, `name`, `nim`, `role`, `fact`, `color`.
+Edit `data/team.json`: `team_name`, lalu `name`, `nim`, `role`, `fact`, `color` tiap anggota.
+`color` = warna baju karakter dan bingkai fotonya.
 
 Foto wajah:
 ```bash
 pip install pillow
-python tools/pixelate.py foto_asli_budi.jpg assets/photos/member1.png
+python tools/pixelate.py foto_asli.jpg assets/photos/member1.png
 ```
-Script ini sudah mem-pixelate foto, jadi **foto asli tidak perlu masuk ke GitHub**
-(simpan di `assets/photos/raw/`, folder itu sudah di-ignore). Game juga mem-pixelate
-lagi saat runtime sebagai pengaman.
+Foto asli simpan di `assets/photos/raw/` (sudah di-ignore, tidak ikut ke GitHub).
+
+## Mengedit level (`data/level1.txt`)
+Level digambar dengan karakter teks, 1 karakter = 1 tile 16×16 px.
+
+| Karakter | Arti |
+|---|---|
+| `#` | tanah berumput (padat) |
+| `B` | balok batu (padat) |
+| `-` | papan kayu (bisa dilompati dari bawah) |
+| `o` | koin |
+| `e` | musuh |
+| `1` `2` `3` | papan anggota ke-1/2/3 (sesuai urutan di team.json) |
+| `P` | posisi awal pemain |
+| `F` | bendera finish |
+| spasi | kosong / jurang |
+
+Tinggi lompatan maksimal ±4 tile, jarak lompat ±6 tile — jaga supaya rintangan masih bisa dilewati.
 
 ## Struktur & pemilik file
 | File | Isi | Pemilik |
 |---|---|---|
-| `scripts/player.gd` | gerak & gambar karakter | Programmer |
-| `scripts/main.gd` | alur game, state, gerbang | Programmer |
-| `scripts/info_popup.gd` | kartu info anggota | Programmer / Artist |
-| `scripts/photo_util.gd`, `tools/pixelate.py` | efek pixel foto | Artist |
-| `assets/photos/*`, warna di `team.json` | aset visual | Artist |
-| `scripts/member_stand.gd`, layout di `main.gd` (`ROOM`, posisi podium) | desain level | Project + Level |
-| `data/team.json`, `README.md`, Trello | data & manajemen | Project + Level |
+| `scripts/player.gd` | fisika lari, lompat, karakter berkepala foto | Programmer |
+| `scripts/enemy.gd` | musuh & logika injak | Programmer |
+| `scripts/main.gd` | alur game, pembaca level, kamera, HUD | Programmer |
+| `scripts/select_screen.gd`, `scripts/info_popup.gd` | layar pilih karakter & kartu anggota | Programmer / Artist |
+| `scripts/level_art.gd`, `scripts/sky.gd` | gambar tile & latar parallax | Artist |
+| `scripts/photo_util.gd`, `tools/pixelate.py`, `assets/photos/*` | foto pixel | Artist |
+| `scripts/pickups.gd` | koin, papan anggota, bendera | Project + Level |
+| `data/level1.txt`, `data/team.json` | desain level & data tim | Project + Level |
 
 ## Alur kolaborasi GitHub
-1. **Project + Level** membuat repo, push commit awal, invite 2 anggota lain sebagai collaborator.
-2. Tiap anggota: `git clone <url>` → `git checkout -b <nama-fitur>`.
-3. Kerja → `git add . && git commit -m "feat: ..."` → `git push -u origin <nama-fitur>`.
+1. Clone: `git clone https://github.com/iola-sava/ThePowerpuffgirl.git`
+2. Buat branch: `git checkout -b <nama-fitur>`
+3. Kerja → `git add .` → `git commit -m "feat: ..."` → `git push -u origin <nama-fitur>`
 4. Buka **Pull Request** di GitHub → anggota lain review → **Merge**.
 5. Yang lain: `git checkout main && git pull`.
 
-Contoh branch & commit:
-- Programmer: `feature/player-movement` → "feat: gerak player WASD", `feature/popup` → "feat: kartu info anggota"
-- Artist: `feature/pixel-photos` → "art: foto pixel 3 anggota", "art: palet warna podium"
-- Project + Level: `feature/level-layout` → "level: layout ruangan & gerbang", "docs: README"
+Contoh branch:
+- Programmer: `feature/player-jump` ("feat: tinggi lompat & coyote time"), `feature/enemy`
+- Artist: `feature/pixel-photos` ("art: foto pixel 3 anggota"), `feature/tile-art`
+- Project + Level: `feature/level-1` ("level: tambah jurang & platform"), `feature/team-data`
 
 ## Board Trello
 Kolom: **To Do → In Progress → Review → Done**
@@ -53,29 +80,29 @@ Kolom: **To Do → In Progress → Review → Done**
 | Kartu | Anggota |
 |---|---|
 | Setup repo GitHub + project Godot | Project + Level |
-| Gerak player (WASD) | Programmer |
-| Sistem interaksi podium (tombol E) | Programmer |
-| Popup kartu anggota | Programmer |
+| Fisika player: lari & lompat | Programmer |
+| Musuh + mekanik injak | Programmer |
+| Layar pilih karakter & kartu anggota | Programmer |
 | Pixelate foto wajah 3 anggota | Artist |
-| Palet warna & tampilan podium | Artist |
-| Layout ruangan + gerbang keluar | Project + Level |
-| Isi data team.json (Nama, NIM) | Project + Level |
-| Testing & bug fix | Semua |
+| Gambar tile, latar, warna karakter | Artist |
+| Desain level 1 (`level1.txt`) | Project + Level |
+| Isi data tim (Nama, NIM, peran) | Project + Level |
+| Playtest & bug fix | Semua |
 | Rekam & edit video demo | Semua |
 
-Tempel link PR GitHub di kartu yang bersangkutan supaya Trello & GitHub terlihat terhubung.
+Tempel link PR GitHub di kartu terkait supaya Trello & GitHub terlihat terhubung.
 
 ## Naskah video demo (target ±17 menit)
 | Menit | Isi | Layar |
 |---|---|---|
-| 0:00–1:30 | Pembukaan: nama tim, anggota, peran, ide game | Wajah/slide + title screen game |
-| 1:30–3:30 | Board Trello: kolom, kartu, siapa pegang apa | Trello |
-| 3:30–5:30 | Setup repo GitHub, invite collaborator, struktur folder | GitHub + Godot |
-| 5:30–9:00 | **Programmer**: buka `player.gd` & `main.gd`, jelaskan, commit, push, buat PR, geser kartu Trello | Godot → terminal → GitHub → Trello |
-| 9:00–12:00 | **Artist**: jalankan `pixelate.py`, ganti foto, ubah warna, commit, PR, geser kartu | Terminal → Godot → GitHub → Trello |
-| 12:00–14:30 | **Project + Level**: atur posisi podium/ruangan, isi `team.json`, review & merge PR teman | Godot → GitHub → Trello |
-| 14:30–16:30 | **Demo game** penuh: title → temui 3 anggota → gerbang terbuka → ending | Game (F5) |
-| 16:30–17:30 | Penutup: tampilkan history commit/Insights GitHub + board Trello yang semua kartunya Done | GitHub + Trello |
+| 0:00–1:30 | Pembukaan: nama tim, anggota, peran, konsep platformer | Wajah/slide + layar pilih karakter |
+| 1:30–3:30 | Board Trello: kolom, kartu, pembagian tugas | Trello |
+| 3:30–5:30 | Setup repo, invite collaborator, struktur folder | GitHub + Godot |
+| 5:30–9:00 | **Programmer**: ubah `player.gd` (misal tinggi lompat), tes F5, commit, PR, geser kartu | Godot → terminal → GitHub → Trello |
+| 9:00–12:00 | **Artist**: `pixelate.py` foto asli, ganti warna tile, commit, PR, geser kartu | Terminal → Godot → GitHub → Trello |
+| 12:00–14:30 | **Project + Level**: edit `level1.txt`, isi `team.json`, review & merge PR teman | Godot → GitHub → Trello |
+| 14:30–16:30 | **Demo game** penuh: pilih karakter → temui 3 anggota → finish | Game (F5) |
+| 16:30–17:30 | Penutup: history commit / Insights GitHub + Trello semua Done | GitHub + Trello |
 
-Tips rekam: tiap anggota merekam layarnya sendiri (OBS / QuickTime) saat mengerjakan
-bagiannya, lalu digabung. Sebut nama di awal tiap segmen ("Saya X, bagian programmer…").
+Tips: tiap anggota merekam layarnya sendiri (OBS / QuickTime) saat mengerjakan bagiannya,
+lalu digabung. Sebut nama di awal tiap segmen.

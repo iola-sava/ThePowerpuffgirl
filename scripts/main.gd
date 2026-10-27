@@ -1,235 +1,313 @@
 extends Node2D
-## Micro game "Team Intro": temui semua anggota tim untuk membuka gerbang keluar.
-## Data anggota dibaca dari res://data/team.json
+## Micro game "Team Intro" versi platformer.
+## Pilih karakter (kepalanya foto anggota) -> lari & lompat -> temui papan tiap
+## anggota (checkpoint) -> kumpulkan koin -> sentuh bendera finish.
+##
+## Data anggota : res://data/team.json
+## Peta level   : res://data/level1.txt  (lihat legenda di README)
 
-const ROOM := Rect2(32, 56, 576, 272)
-const WALL := 8.0
-const GATE_W := 48.0
+const TILE := 16
 const DATA_PATH := "res://data/team.json"
+const LEVEL_PATH := "res://data/level1.txt"
 const PHOTO_PIXELS := 16
 
-enum State { TITLE, PLAY, POPUP, END }
+enum State { SELECT, PLAY, POPUP, END }
 
-var state := State.TITLE
+var state := State.SELECT
 var team_name := "Tim Kami"
 var members: Array = []
-var stands: Array[MemberStand] = []
+var photos: Array = []
+var colors: Array = []
+
+var world: Node2D
 var player: Player
 var popup: InfoPopup
-var top_label: Label
+var select_screen: SelectScreen
+var hud_label: Label
 var hint_label: Label
-var gate: StaticBody2D
-var gate_open := false
-var _wall_rects: Array[Rect2] = []
-var _gate_rect: Rect2
-var _time := 0.0
+
+var member_posts: Array[Pickup] = []
+var coins := 0
+var total_coins := 0
+var respawn_point := Vector2.ZERO
+var level_size := Vector2i.ZERO
+var chosen_index := 0
 
 
 func _ready() -> void:
-	y_sort_enabled = true
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_load_data()
-	_build_walls()
-	_spawn_stands()
 
-	player = Player.new()
-	player.position = Vector2(ROOM.get_center().x, ROOM.end.y - 32)
-	player.frozen = true
-	add_child(player)
+	var sky_layer := CanvasLayer.new()
+	sky_layer.layer = -10
+	var sky := Node2D.new()
+	sky.set_script(load("res://scripts/sky.gd"))
+	sky_layer.add_child(sky)
+	add_child(sky_layer)
 
+	world = Node2D.new()
+	world.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(world)
+	_build_level()
+	_spawn_player()
 	_build_hud()
+
 	popup = InfoPopup.new()
 	add_child(popup)
-	popup.show_message(team_name.to_upper(),
-		"Micro game perkenalan tim.\nTemui setiap anggota di podiumnya untuk membuka gerbang keluar!",
-		Color("#4361ee"), "Tekan E untuk mulai")
+
+	select_screen = SelectScreen.new()
+	select_screen.team_name = team_name
+	select_screen.members = members
+	select_screen.photos = photos
+	select_screen.colors = colors
+	select_screen.chosen.connect(_on_character_chosen)
+	add_child(select_screen)
+
+	get_tree().paused = true
 	_update_hud()
 
 
-# ---------- data ----------
+# ---------------- data ----------------
 func _load_data() -> void:
 	var f := FileAccess.open(DATA_PATH, FileAccess.READ)
-	if f == null:
+	if f:
+		var parsed: Variant = JSON.parse_string(f.get_as_text())
+		if parsed is Dictionary:
+			team_name = str(parsed.get("team_name", team_name))
+			members = parsed.get("members", [])
+	else:
 		push_error("Tidak bisa membuka " + DATA_PATH)
-		return
-	var parsed: Variant = JSON.parse_string(f.get_as_text())
-	if parsed is Dictionary:
-		team_name = str(parsed.get("team_name", team_name))
-		members = parsed.get("members", [])
+	if members.is_empty():
+		members = [{"name": "Pemain", "nim": "-", "role": "-", "color": "#4361ee"}]
+	for m in members:
+		var col := Color.html(str(m.get("color", "#4361ee")))
+		colors.append(col)
+		photos.append(PhotoUtil.load_pixelated(str(m.get("photo", "")), PHOTO_PIXELS, col))
 
 
-# ---------- level ----------
-func _build_walls() -> void:
-	var top := ROOM.position.y - WALL
-	var left := ROOM.position.x - WALL
-	var full_w := ROOM.size.x + WALL * 2.0
-	var half := ROOM.size.x / 2.0 - GATE_W / 2.0 + WALL
-	_add_wall(Rect2(left, top, WALL, ROOM.size.y + WALL * 2.0))           # kiri
-	_add_wall(Rect2(ROOM.end.x, top, WALL, ROOM.size.y + WALL * 2.0))     # kanan
-	_add_wall(Rect2(left, ROOM.end.y, full_w, WALL))                      # bawah
-	_add_wall(Rect2(left, top, half, WALL))                               # atas kiri
-	_add_wall(Rect2(ROOM.get_center().x + GATE_W / 2.0, top, half, WALL)) # atas kanan
-	_gate_rect = Rect2(ROOM.get_center().x - GATE_W / 2.0, top, GATE_W, WALL)
-	gate = _make_body(_gate_rect)
+# ---------------- level ----------------
+func _build_level() -> void:
+	var text := FileAccess.get_file_as_string(LEVEL_PATH)
+	var rows := text.split("\n")
+	while rows.size() > 0 and rows[rows.size() - 1].strip_edges() == "":
+		rows.remove_at(rows.size() - 1)
+
+	var tiles := {}
+	var w := 0
+	for y in rows.size():
+		var row: String = rows[y].trim_suffix("\r")
+		w = maxi(w, row.length())
+		for x in row.length():
+			var ch := row[x]
+			var cell := Vector2i(x, y)
+			var foot := Vector2(x * TILE + TILE / 2.0, (y + 1) * TILE)
+			match ch:
+				"#", "B", "-":
+					tiles[cell] = ch
+				"o":
+					_spawn_pickup(Pickup.Kind.COIN, foot)
+					total_coins += 1
+				"1", "2", "3", "4", "5", "6", "7", "8", "9":
+					var idx := int(ch) - 1
+					if idx < members.size():
+						var p := _spawn_pickup(Pickup.Kind.MEMBER, foot)
+						p.index = idx
+						p.data = members[idx]
+						p.color = colors[idx]
+						p.photo = photos[idx]
+						member_posts.append(p)
+				"e":
+					var e := Enemy.new()
+					e.position = foot
+					world.add_child(e)
+				"P":
+					respawn_point = foot
+				"F":
+					var fl := _spawn_pickup(Pickup.Kind.FINISH, foot)
+					fl.color = Color("#e76f51")
+	level_size = Vector2i(w, rows.size())
+
+	var art := LevelArt.new()
+	art.tiles = tiles
+	world.add_child(art)
+	world.move_child(art, 0)
+
+	# collider: gabungkan tile berurutan dalam satu baris
+	for y in level_size.y:
+		var x := 0
+		while x < w:
+			var ch: String = tiles.get(Vector2i(x, y), "")
+			if ch == "":
+				x += 1
+				continue
+			var one_way := ch == "-"
+			var sx := x
+			while x < w and (tiles.get(Vector2i(x, y), "") == "-") == one_way \
+					and tiles.has(Vector2i(x, y)):
+				x += 1
+			var h := 6.0 if one_way else float(TILE)
+			_add_block(Rect2(sx * TILE, y * TILE, (x - sx) * TILE, h), one_way)
+
+	# dinding tak terlihat di kiri & kanan level
+	var lh := level_size.y * TILE
+	_add_block(Rect2(-TILE, -lh, TILE, lh * 2), false)
+	_add_block(Rect2(w * TILE, -lh, TILE, lh * 2), false)
 
 
-func _add_wall(r: Rect2) -> void:
-	_wall_rects.append(r)
-	_make_body(r)
-
-
-func _make_body(r: Rect2) -> StaticBody2D:
+func _add_block(r: Rect2, one_way: bool) -> void:
 	var body := StaticBody2D.new()
+	body.collision_layer = 1
 	var cs := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
 	shape.size = r.size
 	cs.shape = shape
 	cs.position = r.get_center()
+	cs.one_way_collision = one_way
 	body.add_child(cs)
-	add_child(body)
-	return body
+	world.add_child(body)
 
 
-func _spawn_stands() -> void:
-	var n := members.size()
-	for i in n:
-		var m: Dictionary = members[i]
-		var col := Color.html(str(m.get("color", "#e9c46a")))
-		var tex := PhotoUtil.load_pixelated(str(m.get("photo", "")), PHOTO_PIXELS, col)
-		var s := MemberStand.new()
-		s.setup(m, i, col, tex)
-		s.position = Vector2(ROOM.position.x + ROOM.size.x * (i + 1) / (n + 1), ROOM.position.y + 104)
-		add_child(s)
-		stands.append(s)
+func _spawn_pickup(kind: Pickup.Kind, pos: Vector2) -> Pickup:
+	var p := Pickup.new()
+	p.kind = kind
+	p.position = pos
+	p.touched.connect(_on_pickup_touched)
+	world.add_child(p)
+	return p
 
 
-# ---------- HUD ----------
+func _spawn_player() -> void:
+	player = Player.new()
+	player.position = respawn_point
+	player.photo = photos[0]
+	player.color = colors[0]
+	player.fall_limit = level_size.y * TILE + 48
+	player.died.connect(_on_player_died)
+	world.add_child(player)
+
+	var cam := Camera2D.new()
+	cam.limit_left = 0
+	cam.limit_top = 0
+	cam.limit_right = level_size.x * TILE
+	cam.limit_bottom = level_size.y * TILE
+	cam.position_smoothing_enabled = true
+	cam.position_smoothing_speed = 8.0
+	cam.offset = Vector2(0, -24)
+	player.add_child(cam)
+
+
+# ---------------- HUD ----------------
 func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 5
 	add_child(layer)
-	top_label = _hud_label(Vector2(0, 14), 13, Color.WHITE)
-	hint_label = _hud_label(Vector2(0, 338), 10, Color("#b8b3d6"))
-	layer.add_child(top_label)
+	hud_label = _hud_label(Vector2(12, 8), HORIZONTAL_ALIGNMENT_LEFT, 12)
+	hint_label = _hud_label(Vector2(12, 28), HORIZONTAL_ALIGNMENT_LEFT, 10)
+	layer.add_child(hud_label)
 	layer.add_child(hint_label)
+	hint_label.text = "A/D: jalan    •    Spasi/W: lompat    •    injak musuh dari atas"
 
 
-func _hud_label(pos: Vector2, font_size: int, col: Color) -> Label:
+func _hud_label(pos: Vector2, align: HorizontalAlignment, font_size: int) -> Label:
 	var l := Label.new()
 	l.position = pos
-	l.size = Vector2(640, 20)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.size = Vector2(640 - pos.x * 2, 20)
+	l.horizontal_alignment = align
 	l.add_theme_font_size_override("font_size", font_size)
-	l.add_theme_color_override("font_color", col)
+	l.add_theme_color_override("font_color", Color.WHITE)
+	l.add_theme_color_override("font_outline_color", Color("#1d1b2e"))
+	l.add_theme_constant_override("outline_size", 4)
 	return l
 
 
-func _visited_count() -> int:
+func _met_count() -> int:
 	var c := 0
-	for s in stands:
-		if s.visited:
+	for p in member_posts:
+		if p.visited:
 			c += 1
 	return c
 
 
 func _update_hud() -> void:
-	top_label.text = "%s   •   Anggota ditemui: %d/%d" % [team_name, _visited_count(), stands.size()]
-	if gate_open:
-		hint_label.text = "Gerbang terbuka!  Keluar lewat pintu atas  ↑"
-	else:
-		hint_label.text = "WASD / Panah: jalan    •    E: bicara dengan anggota"
+	var who := str(members[chosen_index].get("name", ""))
+	hud_label.text = "%s    |    Pemain: %s    |    Koin: %d/%d    |    Anggota: %d/%d" % [
+		team_name, who, coins, total_coins, _met_count(), member_posts.size()]
 
 
-# ---------- input & loop ----------
-func _unhandled_input(event: InputEvent) -> void:
-	if not (event is InputEventKey and event.pressed and not event.echo):
-		return
-	var k: int = event.physical_keycode
-	var interact := k in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
-
-	match state:
-		State.TITLE:
-			if interact:
-				_resume()
-		State.POPUP:
-			if interact or k == KEY_ESCAPE:
-				_resume()
-				_check_all_visited()
-		State.PLAY:
-			if interact:
-				for s in stands:
-					if s.player_inside:
-						_open_member(s)
-						break
-		State.END:
-			if k == KEY_R:
-				get_tree().reload_current_scene()
-
-
-func _resume() -> void:
-	popup.hide_popup()
+# ---------------- events ----------------
+func _on_character_chosen(i: int) -> void:
+	chosen_index = i
+	player.photo = photos[i]
+	player.color = colors[i]
+	player.queue_redraw()
 	state = State.PLAY
-	player.frozen = false
-
-
-func _open_member(s: MemberStand) -> void:
-	state = State.POPUP
-	player.frozen = true
-	s.visited = true
-	popup.show_member(s.data, s.photo, s.color, s.index + 1, stands.size())
+	get_tree().paused = false
 	_update_hud()
 
 
-func _check_all_visited() -> void:
-	if gate_open or stands.is_empty() or _visited_count() < stands.size():
+func _on_pickup_touched(p: Pickup) -> void:
+	if state != State.PLAY:
 		return
-	gate_open = true
-	gate.queue_free()
+	match p.kind:
+		Pickup.Kind.COIN:
+			coins += 1
+			p.collect()
+		Pickup.Kind.MEMBER:
+			respawn_point = p.global_position
+			if not p.visited:
+				p.visited = true
+				_open_popup.call_deferred(p)
+		Pickup.Kind.FINISH:
+			if _met_count() < member_posts.size():
+				_pause_with_message("Belum lengkap!",
+					"Temui dulu semua anggota tim sebelum finish.", Color("#e76f51"),
+					"Tekan E untuk lanjut")
+			else:
+				_finish.call_deferred()
 	_update_hud()
 
 
-func _process(delta: float) -> void:
-	_time += delta
-	if state == State.PLAY and gate_open and player.position.y < ROOM.position.y - WALL - 4:
-		_finish()
-	queue_redraw()
+func _open_popup(p: Pickup) -> void:
+	state = State.POPUP
+	get_tree().paused = true
+	popup.show_member(p.data, p.photo, p.color, _met_count(), member_posts.size())
+
+
+func _pause_with_message(title: String, body: String, col: Color, hint: String) -> void:
+	state = State.POPUP
+	get_tree().paused = true
+	popup.show_message(title, body, col, hint)
+	player.position.x -= 24
+
+
+func _on_player_died() -> void:
+	player.respawn(respawn_point)
 
 
 func _finish() -> void:
 	state = State.END
-	player.frozen = true
+	get_tree().paused = true
 	var lines := ""
 	for m in members:
-		lines += "• %s (%s)\n" % [str(m.get("name", "")), str(m.get("role", ""))]
-	popup.show_message("TIM LENGKAP!",
-		"Kamu sudah kenalan dengan:\n" + lines + "\nSiap berkolaborasi di proyek akhir!",
-		Color("#e9c46a"), "Tekan R untuk main lagi")
+		lines += "• %s  —  %s\n" % [str(m.get("name", "")), str(m.get("role", ""))]
+	popup.show_message("LEVEL SELESAI!",
+		"%s\n%s\nKoin terkumpul: %d/%d\nSiap berkolaborasi di proyek akhir!" % [
+			team_name, lines, coins, total_coins],
+		Color("#ffd23f"), "Tekan R untuk main lagi")
 
 
-# ---------- render ----------
-func _draw() -> void:
-	draw_rect(get_viewport_rect(), Color("#1d1b2e"))
-
-	# lantai kotak-kotak
-	var tile := 16
-	for x in range(int(ROOM.position.x), int(ROOM.end.x), tile):
-		for y in range(int(ROOM.position.y), int(ROOM.end.y), tile):
-			var even := ((x + y) / tile) % 2 == 0
-			draw_rect(Rect2(x, y, tile, tile), Color("#3d3a5c") if even else Color("#36334f"))
-
-	# karpet di depan podium
-	draw_rect(Rect2(ROOM.position.x + 48, ROOM.position.y + 136, ROOM.size.x - 96, 8), Color("#4a3f6b"))
-
-	# dinding
-	for r in _wall_rects:
-		draw_rect(r, Color("#5b4b8a"))
-		draw_rect(Rect2(r.position, Vector2(r.size.x, 2)), Color("#7a68b3"))
-
-	# gerbang
-	if gate_open:
-		var a := 0.35 + 0.25 * sin(_time * 4.0)
-		draw_rect(Rect2(_gate_rect.position.x, 0, GATE_W, _gate_rect.end.y), Color(0.91, 0.77, 0.42, a))
-	else:
-		draw_rect(_gate_rect, Color("#2b2540"))
-		for i in 5:
-			var bx := _gate_rect.position.x + 4 + i * 10
-			draw_rect(Rect2(bx, _gate_rect.position.y, 3, WALL), Color("#e9c46a"))
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	var k: int = event.physical_keycode
+	match state:
+		State.POPUP:
+			if k in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE]:
+				popup.hide_popup()
+				state = State.PLAY
+				get_tree().paused = false
+				get_viewport().set_input_as_handled()
+		State.END:
+			if k == KEY_R:
+				get_tree().paused = false
+				get_tree().reload_current_scene()
