@@ -43,6 +43,7 @@ func _on_body_entered(b: Node2D) -> void:
 
 func collect() -> void:
 	set_deferred("monitoring", false)
+	Fx.burst(get_parent(), global_position + Vector2(0, -8), UI.SUN, 7, 55.0, Fx.Shape.SPARKLE, 2.0)
 	var tw := create_tween()
 	tw.tween_property(self, "position:y", position.y - 16, 0.25)
 	tw.parallel().tween_property(self, "modulate:a", 0.0, 0.25)
@@ -57,47 +58,55 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	match kind:
 		Kind.COIN:
-			var w := absf(cos(_t * 4.0)) * 5.0 + 1.0
-			draw_set_transform(Vector2(0, -8), 0.0, Vector2(w / 6.0, 1.0))
-			draw_circle(Vector2.ZERO, 6.0, Color("#c9971c"))
-			draw_circle(Vector2.ZERO, 4.5, Color("#ffd23f"))
-			draw_rect(Rect2(-1, -3, 2, 6), Color("#fff3b0"))
+			_draw_star()
 		Kind.MEMBER:
 			_draw_member()
 		Kind.FINISH:
 			_draw_finish()
 
 
+func _draw_star() -> void:
+	var c := Vector2(0, -8 + sin(_t * 3.0) * 1.5)
+	var rot := -PI / 2.0 + sin(_t * 2.0) * 0.25
+	draw_colored_polygon(UI.star_points(c + Vector2(0, 1), 7.0, 3.4, rot), Color("#f2a93b"))
+	draw_colored_polygon(UI.star_points(c, 6.5, 3.0, rot), UI.SUN)
+	draw_circle(c + Vector2(-1.5, -1.5), 1.2, Color(1, 1, 1, 0.8))
+
+
 func _draw_member() -> void:
-	var font := ThemeDB.fallback_font
-	draw_rect(Rect2(-1, -30, 3, 30), Color("#5c4a3d"))
-	var y := -48.0 + sin(_t * 2.0) * 1.5
-	draw_rect(Rect2(-11, y - 1, 22, 22), Color("#1d1b2e"))
-	draw_rect(Rect2(-10, y, 20, 20), color)
-	if photo:
-		draw_texture_rect(photo, Rect2(-8, y + 2, 16, 16), false)
-	draw_string(font, Vector2(-40, y - 4), str(data.get("role", "")),
-		HORIZONTAL_ALIGNMENT_CENTER, 80, 8, Color.WHITE)
+	var y := -44.0 + sin(_t * 2.0) * 1.5
+	# tiang
+	draw_style_box(UI.box(Color("#d9a877"), 1), Rect2(-1.5, y + 10, 3, -y - 10))
+	# papan + foto bulat
+	draw_style_box(UI.box(Color("#ffffff"), 8, color, 2), Rect2(-14, y - 12, 28, 28))
+	UI.circle_photo(self, photo, Vector2(0, y + 2), 10.0, color, 1.2)
+	# pita peran
+	var role := str(data.get("role", ""))
+	var font: Font = UI.BOLD
+	var fs := 7
+	var w := font.get_string_size(role, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 10.0
+	draw_style_box(UI.box(color, 5), Rect2(-w / 2.0, y - 24, w, 10))
+	draw_string(font, Vector2(-w / 2.0, y - 16.5), role, HORIZONTAL_ALIGNMENT_CENTER, w, fs, Color.WHITE)
 	if visited:
-		draw_circle(Vector2(10, y), 4.0, Color("#2a9d8f"))
+		draw_circle(Vector2(13, y - 10), 5.0, Color.WHITE)
+		draw_circle(Vector2(13, y - 10), 4.0, UI.MINT)
 		draw_polyline(PackedVector2Array([
-			Vector2(8, y), Vector2(9.5, y + 1.5), Vector2(12, y - 1.5)
-		]), Color.WHITE, 1.2)
+			Vector2(11, y - 10), Vector2(12.5, y - 8.5), Vector2(15, y - 11.5)
+		]), Color.WHITE, 1.3, true)
 	else:
-		var a := 0.5 + 0.5 * sin(_t * 5.0)
-		draw_string(font, Vector2(-5, y - 14), "!", HORIZONTAL_ALIGNMENT_CENTER, 10, 12,
-			Color(1, 0.9, 0.3, a))
+		var hy := y - 34.0 + sin(_t * 4.0) * 2.0
+		UI.heart(self, Vector2(0, hy + 1), 3.6, Color(1, 1, 1, 0.9))
+		UI.heart(self, Vector2(0, hy), 3.0, UI.PINK)
 
 
 func _draw_finish() -> void:
-	draw_rect(Rect2(-1, -80, 3, 80), Color("#dfe6e9"))
-	draw_circle(Vector2(0.5, -82), 3.0, Color("#ffd23f"))
+	draw_style_box(UI.box(Color.WHITE, 2), Rect2(-1.5, -80, 3, 80))
+	draw_colored_polygon(UI.star_points(Vector2(0, -84), 6.0, 2.8), UI.SUN)
 	var pts := PackedVector2Array()
-	for i in 7:
-		var x := 2.0 + i * 4.0
-		pts.append(Vector2(x, -78 + sin(_t * 6.0 - i * 0.7) * 1.5))
-	for i in range(6, -1, -1):
-		var x := 2.0 + i * 4.0
-		pts.append(Vector2(x, -64 + sin(_t * 6.0 - i * 0.7) * 1.5))
-	draw_colored_polygon(pts, color)
-	draw_rect(Rect2(-6, -4, 14, 4), Color("#6c7a89"))
+	for i in 8:
+		pts.append(Vector2(2.0 + i * 4.0, -78 + sin(_t * 6.0 - i * 0.7) * 1.5))
+	for i in range(7, -1, -1):
+		pts.append(Vector2(2.0 + i * 4.0, -60 + sin(_t * 6.0 - i * 0.7) * 1.5))
+	draw_colored_polygon(pts, UI.PINK)
+	UI.heart(self, Vector2(16, -70 + sin(_t * 6.0 - 3.5) * 1.5), 3.2, Color.WHITE)
+	draw_style_box(UI.box(Color("#ff9fc9"), 3), Rect2(-7, -5, 15, 5))

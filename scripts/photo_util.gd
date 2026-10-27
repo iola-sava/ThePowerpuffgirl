@@ -31,9 +31,9 @@ static func load_pixelated(path: String, pixels: int, fallback: Color) -> Textur
 	for y in pixels:
 		for x in pixels:
 			var c := img.get_pixel(x, y)
-			c.r = snappedf(c.r, 0.2)
-			c.g = snappedf(c.g, 0.2)
-			c.b = snappedf(c.b, 0.2)
+			c.r = snappedf(c.r, 1.0 / 7.0)
+			c.g = snappedf(c.g, 1.0 / 7.0)
+			c.b = snappedf(c.b, 1.0 / 7.0)
 			img.set_pixel(x, y, c)
 
 	return ImageTexture.create_from_image(img)

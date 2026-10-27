@@ -21,6 +21,7 @@ var fall_limit := 100000.0
 var _coyote := 0.0
 var _buffer := 0.0
 var _walk := 0.0
+var _idle := 0.0
 var _squash := Vector2.ONE
 
 
@@ -66,6 +67,7 @@ func _physics_process(delta: float) -> void:
 		_buffer = 0.0
 		_coyote = 0.0
 		_squash = Vector2(0.75, 1.3)
+		Fx.burst(get_parent(), global_position, Color.WHITE, 5, 40.0)
 	elif velocity.y < 0.0 and not _jump_held():
 		velocity.y += GRAVITY * delta * 1.5  # lompat pendek kalau tombol dilepas
 
@@ -73,8 +75,10 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if was_air and is_on_floor():
 		_squash = Vector2(1.3, 0.75)
+		Fx.burst(get_parent(), global_position, Color.WHITE, 6, 45.0)
 	_squash = _squash.lerp(Vector2.ONE, 12.0 * delta)
 
+	_idle += delta
 	_walk = _walk + delta * 14.0 if absf(velocity.x) > 10.0 and is_on_floor() else 0.0
 	if invuln > 0.0:
 		invuln -= delta
@@ -101,25 +105,30 @@ func respawn(pos: Vector2) -> void:
 func _draw() -> void:
 	if invuln > 0.0 and int(invuln * 16.0) % 2 == 0:
 		return
+	var on_floor := is_on_floor()
+	# bayangan
+	if on_floor:
+		draw_set_transform(Vector2(0, 0), 0.0, Vector2(1.0, 0.35))
+		draw_circle(Vector2.ZERO, 7.0, Color(0.35, 0.25, 0.45, 0.25))
 	draw_set_transform(Vector2.ZERO, 0.0, _squash)
-	var dark := Color("#1d1b2e")
+	var breathe := sin(_idle * 3.0) * 0.6 if _walk == 0.0 else absf(sin(_walk)) * -1.5
+	var ink := UI.INK
 	# kaki
-	if is_on_floor():
-		var s := sin(_walk) * 2.0
-		draw_rect(Rect2(-4 + s * 0.5, -4, 3, 4), dark)
-		draw_rect(Rect2(1 - s * 0.5, -4, 3, 4), dark)
-	else:
-		draw_rect(Rect2(-4, -5, 3, 3), dark)
-		draw_rect(Rect2(1, -5, 3, 3), dark)
-	# badan + tangan
-	draw_rect(Rect2(-5, -10, 10, 7), color)
-	draw_rect(Rect2(-5, -10, 10, 2), color.lightened(0.3))
-	var arm := -9.0 if velocity.y < 0.0 else -8.0
-	draw_rect(Rect2(-7, arm, 2, 4), Color("#f4c095"))
-	draw_rect(Rect2(5, arm, 2, 4), Color("#f4c095"))
-	# kepala = foto
-	draw_rect(Rect2(-8, -25, 16, 16), dark)
-	if photo:
-		draw_texture_rect(photo, Rect2(-7, -24, 14, 14), false)
-	else:
-		draw_rect(Rect2(-7, -24, 14, 14), Color("#f4c095"))
+	var s := sin(_walk) * 2.5
+	var fy := -2.0 if on_floor else -4.0
+	draw_set_transform(Vector2(-2.5 + s * 0.5, fy), 0.0, _squash * Vector2(1.0, 0.7))
+	draw_circle(Vector2.ZERO, 2.4, ink)
+	draw_set_transform(Vector2(2.5 - s * 0.5, fy), 0.0, _squash * Vector2(1.0, 0.7))
+	draw_circle(Vector2.ZERO, 2.4, ink)
+	draw_set_transform(Vector2.ZERO, 0.0, _squash)
+	# badan
+	var body := Rect2(-5.5, -11 + breathe, 11, 9)
+	draw_style_box(UI.box(color.darkened(0.15), 4), Rect2(body.position + Vector2(0, 1), body.size))
+	draw_style_box(UI.box(color, 4), body)
+	draw_circle(Vector2(0, -6 + breathe), 2.2, color.lightened(0.35))
+	# tangan
+	var arm_y := -12.0 if velocity.y < 0.0 else -7.0 - sin(_walk) * 1.0
+	draw_circle(Vector2(-6.5, arm_y + breathe), 1.9, Color("#ffd9c2"))
+	draw_circle(Vector2(6.5, arm_y + breathe), 1.9, Color("#ffd9c2"))
+	# kepala = foto bulat
+	UI.circle_photo(self, photo, Vector2(0, -20 + breathe), 9.0, color, 1.6)

@@ -47,36 +47,40 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _on_draw() -> void:
 	var c := _canvas
-	var font := ThemeDB.fallback_font
 	var vp := c.get_viewport_rect().size
-	c.draw_rect(Rect2(Vector2.ZERO, vp), Color(0.07, 0.06, 0.12, 0.88))
-	c.draw_string(font, Vector2(0, 58), "PILIH KARAKTER", HORIZONTAL_ALIGNMENT_CENTER, vp.x, 24, Color.WHITE)
-	c.draw_string(font, Vector2(0, 82), team_name, HORIZONTAL_ALIGNMENT_CENTER, vp.x, 12, Color("#ffd23f"))
+	c.draw_rect(Rect2(Vector2.ZERO, vp), Color(1.0, 0.88, 0.94, 0.82))
+	for i in 10:
+		var p := Vector2(fposmod(i * 71.0 + _t * 12.0, vp.x), fmod(i * 41.0, 90.0) + 10.0)
+		UI.sparkle(c, p, 3.0 + i % 3, Color(1, 1, 1, 0.5 + 0.5 * sin(_t * 3.0 + i)))
+
+	c.draw_string_outline(UI.BOLD, Vector2(0, 56), "PILIH KARAKTER", HORIZONTAL_ALIGNMENT_CENTER, vp.x, 26, 8, Color.WHITE)
+	c.draw_string(UI.BOLD, Vector2(0, 56), "PILIH KARAKTER", HORIZONTAL_ALIGNMENT_CENTER, vp.x, 26, UI.INK)
+	c.draw_string(UI.BOLD, Vector2(0, 80), team_name, HORIZONTAL_ALIGNMENT_CENTER, vp.x, 13, UI.PINK)
 
 	var n := members.size()
 	var cw := 150.0
-	var gap := 20.0
+	var gap := 22.0
 	var x0 := (vp.x - (n * cw + (n - 1) * gap)) / 2.0
 	for i in n:
 		var m: Dictionary = members[i]
 		var col: Color = colors[i]
 		var is_sel := i == sel
-		var y := 104.0 - (4.0 + sin(_t * 5.0) * 2.0 if is_sel else 0.0)
-		var r := Rect2(x0 + i * (cw + gap), y, cw, 186)
-		c.draw_rect(r, Color("#1d1b2e"))
-		c.draw_rect(r, col if is_sel else Color("#4a4566"), false, 3.0 if is_sel else 1.0)
-		c.draw_rect(Rect2(r.position + Vector2(33, 16), Vector2(84, 84)), col)
-		c.draw_texture_rect(photos[i], Rect2(r.position + Vector2(35, 18), Vector2(80, 80)), false)
-		c.draw_string(font, r.position + Vector2(6, 124), str(m.get("name", "")),
-			HORIZONTAL_ALIGNMENT_CENTER, cw - 12, 12, Color.WHITE)
-		c.draw_string(font, r.position + Vector2(6, 142), "NIM " + str(m.get("nim", "")),
-			HORIZONTAL_ALIGNMENT_CENTER, cw - 12, 9, Color("#b8b3d6"))
-		c.draw_string(font, r.position + Vector2(6, 164), str(m.get("role", "")),
-			HORIZONTAL_ALIGNMENT_CENTER, cw - 12, 11, col)
+		var lift := (6.0 + sin(_t * 5.0) * 2.0) if is_sel else 0.0
+		var r := Rect2(x0 + i * (cw + gap), 100.0 - lift, cw, 196)
+		c.draw_style_box(UI.box(Color(0.36, 0.29, 0.43, 0.15), 18), Rect2(r.position + Vector2(0, 5 + lift), r.size))
+		c.draw_style_box(UI.box(UI.CREAM, 18, col if is_sel else Color.WHITE, 4 if is_sel else 2), r)
+		UI.circle_photo(c, photos[i], r.position + Vector2(cw / 2.0, 62), 40.0, col, 3.0)
+		c.draw_string(UI.BOLD, r.position + Vector2(6, 128), str(m.get("name", "")),
+			HORIZONTAL_ALIGNMENT_CENTER, cw - 12, 13, UI.INK)
+		c.draw_string(UI.BODY, r.position + Vector2(6, 146), "NIM " + str(m.get("nim", "")),
+			HORIZONTAL_ALIGNMENT_CENTER, cw - 12, 9, UI.MUTED)
+		var role := str(m.get("role", ""))
+		var w := UI.BOLD.get_string_size(role, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x + 18.0
+		var pill := Rect2(r.position + Vector2((cw - w) / 2.0, 158), Vector2(w, 20))
+		c.draw_style_box(UI.box(col, 10), pill)
+		c.draw_string(UI.BOLD, pill.position + Vector2(0, 14), role, HORIZONTAL_ALIGNMENT_CENTER, w, 10, Color.WHITE)
 		if is_sel:
-			var tx := r.position.x + cw / 2.0
-			var ty := r.end.y + 8.0
-			c.draw_colored_polygon(PackedVector2Array([Vector2(tx, ty), Vector2(tx - 6, ty + 8), Vector2(tx + 6, ty + 8)]), col)
+			UI.heart(c, Vector2(r.position.x + cw / 2.0, r.end.y + 14 + lift), 6.0, col)
 
-	c.draw_string(font, Vector2(0, 340), "A / D  atau  Kiri / Kanan: pilih      •      E / Spasi: mulai",
-		HORIZONTAL_ALIGNMENT_CENTER, vp.x, 11, Color("#b8b3d6"))
+	c.draw_string(UI.BODY, Vector2(0, 346), "A / D  atau  Kiri / Kanan: pilih      •      E / Spasi: mulai",
+		HORIZONTAL_ALIGNMENT_CENTER, vp.x, 11, UI.INK)

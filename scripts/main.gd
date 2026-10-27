@@ -9,7 +9,7 @@ extends Node2D
 const TILE := 16
 const DATA_PATH := "res://data/team.json"
 const LEVEL_PATH := "res://data/level1.txt"
-const PHOTO_PIXELS := 16
+const PHOTO_PIXELS := 20
 
 enum State { SELECT, PLAY, POPUP, END }
 
@@ -23,8 +23,7 @@ var world: Node2D
 var player: Player
 var popup: InfoPopup
 var select_screen: SelectScreen
-var hud_label: Label
-var hint_label: Label
+var hud: Control
 
 var member_posts: Array[Pickup] = []
 var coins := 0
@@ -201,23 +200,11 @@ func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 5
 	add_child(layer)
-	hud_label = _hud_label(Vector2(12, 8), HORIZONTAL_ALIGNMENT_LEFT, 12)
-	hint_label = _hud_label(Vector2(12, 28), HORIZONTAL_ALIGNMENT_LEFT, 10)
-	layer.add_child(hud_label)
-	layer.add_child(hint_label)
-	hint_label.text = "A/D: jalan    •    Spasi/W: lompat    •    injak musuh dari atas"
-
-
-func _hud_label(pos: Vector2, align: HorizontalAlignment, font_size: int) -> Label:
-	var l := Label.new()
-	l.position = pos
-	l.size = Vector2(640 - pos.x * 2, 20)
-	l.horizontal_alignment = align
-	l.add_theme_font_size_override("font_size", font_size)
-	l.add_theme_color_override("font_color", Color.WHITE)
-	l.add_theme_color_override("font_outline_color", Color("#1d1b2e"))
-	l.add_theme_constant_override("outline_size", 4)
-	return l
+	hud = Control.new()
+	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.draw.connect(_draw_hud)
+	layer.add_child(hud)
 
 
 func _met_count() -> int:
@@ -229,9 +216,37 @@ func _met_count() -> int:
 
 
 func _update_hud() -> void:
-	var who := str(members[chosen_index].get("name", ""))
-	hud_label.text = "%s    |    Pemain: %s    |    Koin: %d/%d    |    Anggota: %d/%d" % [
-		team_name, who, coins, total_coins, _met_count(), member_posts.size()]
+	if hud:
+		hud.queue_redraw()
+
+
+func _pill(x: float, text: String, icon: int) -> float:
+	var w := UI.BOLD.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 34.0
+	var r := Rect2(x, 10, w, 24)
+	hud.draw_style_box(UI.box(Color(0.36, 0.29, 0.43, 0.18), 12), Rect2(r.position + Vector2(0, 2), r.size))
+	hud.draw_style_box(UI.box(UI.CREAM, 12, Color.WHITE, 2), r)
+	var ic := r.position + Vector2(14, 12)
+	match icon:
+		0:
+			hud.draw_colored_polygon(UI.star_points(ic, 7.0, 3.2), UI.SUN)
+		1:
+			UI.heart(hud, ic + Vector2(0, -1), 3.4, UI.PINK)
+		2:
+			UI.circle_photo(hud, photos[chosen_index], ic, 6.5, colors[chosen_index], 1.0)
+	hud.draw_string(UI.BOLD, r.position + Vector2(24, 17), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UI.INK)
+	return x + w + 8.0
+
+
+func _draw_hud() -> void:
+	var x := 12.0
+	x = _pill(x, str(members[chosen_index].get("name", "")), 2)
+	x = _pill(x, "%d / %d" % [coins, total_coins], 0)
+	x = _pill(x, "%d / %d" % [_met_count(), member_posts.size()], 1)
+	if state == State.PLAY:
+		hud.draw_string_outline(UI.BODY, Vector2(12, 52), "A/D jalan  •  Spasi lompat  •  injak musuh dari atas",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 4, Color(1, 1, 1, 0.8))
+		hud.draw_string(UI.BODY, Vector2(12, 52), "A/D jalan  •  Spasi lompat  •  injak musuh dari atas",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UI.INK)
 
 
 # ---------------- events ----------------
@@ -271,6 +286,7 @@ func _open_popup(p: Pickup) -> void:
 	state = State.POPUP
 	get_tree().paused = true
 	popup.show_member(p.data, p.photo, p.color, _met_count(), member_posts.size())
+	Fx.burst(self, p.global_position + Vector2(0, -44), UI.PINK, 10, 70.0, Fx.Shape.HEART, 2.2)
 
 
 func _pause_with_message(title: String, body: String, col: Color, hint: String) -> void:
@@ -286,6 +302,7 @@ func _on_player_died() -> void:
 
 func _finish() -> void:
 	state = State.END
+	_update_hud()
 	get_tree().paused = true
 	var lines := ""
 	for m in members:
@@ -306,6 +323,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				popup.hide_popup()
 				state = State.PLAY
 				get_tree().paused = false
+				_update_hud()
 				get_viewport().set_input_as_handled()
 		State.END:
 			if k == KEY_R:

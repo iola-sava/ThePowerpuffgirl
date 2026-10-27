@@ -6,6 +6,8 @@ var _root: Control
 var _panel: PanelContainer
 var _style: StyleBoxFlat
 var _photo: TextureRect
+var _photo_frame: PanelContainer
+var _photo_style: StyleBoxFlat
 var _title: Label
 var _sub: Label
 var _body: Label
@@ -23,16 +25,16 @@ func _ready() -> void:
 	add_child(_root)
 
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.55)
+	dim.color = Color(0.36, 0.29, 0.43, 0.45)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(dim)
 
 	_panel = PanelContainer.new()
-	_style = StyleBoxFlat.new()
-	_style.bg_color = Color("#14121f")
-	_style.set_border_width_all(3)
-	_style.set_corner_radius_all(4)
-	_style.set_content_margin_all(14)
+	_style = UI.box(UI.CREAM, 16, UI.PINK, 4)
+	_style.set_content_margin_all(16)
+	_style.shadow_color = Color(0.36, 0.29, 0.43, 0.3)
+	_style.shadow_size = 8
+	_style.shadow_offset = Vector2(0, 4)
 	_panel.add_theme_stylebox_override("panel", _style)
 	_root.add_child(_panel)
 
@@ -40,33 +42,39 @@ func _ready() -> void:
 	hbox.add_theme_constant_override("separation", 14)
 	_panel.add_child(hbox)
 
+	_photo_frame = PanelContainer.new()
+	_photo_style = UI.box(Color.WHITE, 12, UI.PINK, 3)
+	_photo_style.set_content_margin_all(4)
+	_photo_frame.add_theme_stylebox_override("panel", _photo_style)
+	_photo_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hbox.add_child(_photo_frame)
 	_photo = TextureRect.new()
 	_photo.custom_minimum_size = Vector2(112, 112)
 	_photo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_photo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_photo.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_photo.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	hbox.add_child(_photo)
+	_photo_frame.add_child(_photo)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 6)
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(vbox)
 
-	_title = _make_label(18, Color.WHITE)
-	_sub = _make_label(12, Color.WHITE)
-	_body = _make_label(11, Color("#d8d4f0"))
+	_title = _make_label(18, UI.INK, UI.BOLD)
+	_sub = _make_label(12, UI.PINK, UI.BOLD)
+	_body = _make_label(11, UI.INK)
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_body.custom_minimum_size = Vector2(260, 0)
-	_hint = _make_label(10, Color("#8f8aa8"))
+	_hint = _make_label(10, UI.MUTED)
 	for l in [_title, _sub, _body, _hint]:
 		vbox.add_child(l)
 
 	visible = false
 
 
-func _make_label(font_size: int, col: Color) -> Label:
+func _make_label(font_size: int, col: Color, font: Font = UI.BODY) -> Label:
 	var l := Label.new()
+	l.add_theme_font_override("font", font)
 	l.add_theme_font_size_override("font_size", font_size)
 	l.add_theme_color_override("font_color", col)
 	return l
@@ -74,7 +82,8 @@ func _make_label(font_size: int, col: Color) -> Label:
 
 func show_member(d: Dictionary, photo: Texture2D, col: Color, num: int, total: int) -> void:
 	_style.border_color = col
-	_photo.visible = true
+	_photo_style.border_color = col
+	_photo_frame.visible = true
 	_photo.texture = photo
 	_title.text = str(d.get("name", ""))
 	_sub.visible = true
@@ -87,7 +96,7 @@ func show_member(d: Dictionary, photo: Texture2D, col: Color, num: int, total: i
 
 func show_message(title: String, body: String, col: Color, hint: String) -> void:
 	_style.border_color = col
-	_photo.visible = false
+	_photo_frame.visible = false
 	_title.text = title
 	_sub.visible = false
 	_body.text = body

@@ -3,7 +3,8 @@
 Micro game perkenalan tim proyek akhir bergaya **platformer side-scrolling**.
 Di awal, pemain **memilih karakter**: tiap karakter berkepala **foto wajah anggota
 yang di-pixelate**, lengkap dengan Nama, NIM, dan peran. Setelah itu pemain berlari
-dan melompat melewati level, mengumpulkan koin, menginjak musuh, dan menemui
+dan melompat melewati level bergaya pastel (pelangi, awan, tanah kue, balok permen),
+mengumpulkan bintang, menginjak musuh blob, dan menemui
 **papan tiap anggota** (sekaligus checkpoint) yang menampilkan kartu perkenalan.
 Bendera finish hanya bisa disentuh setelah semua anggota ditemui.
 
@@ -38,10 +39,10 @@ Level digambar dengan karakter teks, 1 karakter = 1 tile 16×16 px.
 
 | Karakter | Arti |
 |---|---|
-| `#` | tanah berumput (padat) |
-| `B` | balok batu (padat) |
-| `-` | papan kayu (bisa dilompati dari bawah) |
-| `o` | koin |
+| `#` | tanah kue berumput (padat) |
+| `B` | balok permen (padat) |
+| `-` | platform awan (bisa dilompati dari bawah) |
+| `o` | bintang |
 | `e` | musuh |
 | `1` `2` `3` | papan anggota ke-1/2/3 (sesuai urutan di team.json) |
 | `P` | posisi awal pemain |
@@ -58,8 +59,9 @@ Tinggi lompatan maksimal ±4 tile, jarak lompat ±6 tile — jaga supaya rintang
 | `scripts/main.gd` | alur game, pembaca level, kamera, HUD | Programmer |
 | `scripts/select_screen.gd`, `scripts/info_popup.gd` | layar pilih karakter & kartu anggota | Programmer / Artist |
 | `scripts/level_art.gd`, `scripts/sky.gd` | gambar tile & latar parallax | Artist |
+| `scripts/ui.gd`, `scripts/fx.gd`, `assets/fonts/*` | palet warna, font, efek partikel | Artist |
 | `scripts/photo_util.gd`, `tools/pixelate.py`, `assets/photos/*` | foto pixel | Artist |
-| `scripts/pickups.gd` | koin, papan anggota, bendera | Project + Level |
+| `scripts/pickups.gd` | bintang, papan anggota, bendera | Project + Level |
 | `data/level1.txt`, `data/team.json` | desain level & data tim | Project + Level |
 
 ## Alur kolaborasi GitHub
@@ -84,7 +86,7 @@ Kolom: **To Do → In Progress → Review → Done**
 | Musuh + mekanik injak | Programmer |
 | Layar pilih karakter & kartu anggota | Programmer |
 | Pixelate foto wajah 3 anggota | Artist |
-| Gambar tile, latar, warna karakter | Artist |
+| Gambar tile, latar pastel, efek partikel | Artist |
 | Desain level 1 (`level1.txt`) | Project + Level |
 | Isi data tim (Nama, NIM, peran) | Project + Level |
 | Playtest & bug fix | Semua |
