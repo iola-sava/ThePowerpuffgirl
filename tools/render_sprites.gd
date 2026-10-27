@@ -8,22 +8,15 @@ extends SceneTree
 
 const OUT := "res://assets/sprites/"
 const INK := Color("#5b4a6e")
-const SKIN := Color("#ffd9c2")
+const SKIN := Color("#ffd9c2")  # warna kulit placeholder
 
 
 func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
 
-	# --- player: kaki + tangan (tidak diwarnai) ---
-	await _render("player_idle", Vector2(20, 18), Vector2(10, 16), _limbs.bind(0.0, true, false))
-	for i in 4:
-		await _render("player_walk_%d" % i, Vector2(20, 18), Vector2(10, 16), _limbs.bind(i * PI / 2.0, true, false))
-	await _render("player_jump", Vector2(20, 18), Vector2(10, 16), _limbs.bind(0.0, false, true))
-	# --- player: baju (putih, diwarnai lewat modulate) ---
-	await _render("player_shirt", Vector2(14, 12), Vector2(7, 12), _shirt)
+	# --- bayangan di bawah karakter ---
 	await _render("shadow", Vector2(16, 6), Vector2(8, 3), _shadow)
 	# --- cincin foto & placeholder wajah ---
-	await _render("ring_white", Vector2(26, 26), Vector2(13, 13), _circle.bind(11.6, Color.WHITE))
 	await _render("ring_color", Vector2(24, 24), Vector2(12, 12), _circle.bind(10.6, Color.WHITE))
 	await _render("face_placeholder", Vector2(20, 20), Vector2(10, 10), _face)
 	# --- musuh ---
@@ -64,25 +57,6 @@ func _render(name: String, size: Vector2, origin: Vector2, fn: Callable) -> void
 
 
 # ------------------------------------------------------------------ gambar
-func _limbs(ci: Node2D, walk: float, on_floor: bool, rising: bool) -> void:
-	var s := sin(walk) * 2.5
-	var fy := -2.0 if on_floor else -4.0
-	for lx in [-2.5 + s * 0.5, 2.5 - s * 0.5]:
-		ci.draw_set_transform(Vector2(lx, fy), 0.0, Vector2(1.0, 0.7))
-		ci.draw_circle(Vector2.ZERO, 2.4, INK)
-	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	var arm_y := -12.0 if rising else -7.0 - sin(walk) * 1.0
-	ci.draw_circle(Vector2(-6.5, arm_y), 1.9, SKIN)
-	ci.draw_circle(Vector2(6.5, arm_y), 1.9, SKIN)
-
-
-func _shirt(ci: Node2D) -> void:
-	var body := Rect2(-5.5, -11, 11, 9)
-	ci.draw_style_box(UI.box(Color(0.75, 0.75, 0.75), 4), Rect2(body.position + Vector2(0, 1), body.size))
-	ci.draw_style_box(UI.box(Color(0.88, 0.88, 0.88), 4), body)
-	ci.draw_circle(Vector2(0, -6), 2.2, Color.WHITE)
-
-
 func _shadow(ci: Node2D) -> void:
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.35))
 	ci.draw_circle(Vector2.ZERO, 7.0, Color(0.35, 0.25, 0.45, 0.25))

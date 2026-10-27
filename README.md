@@ -1,8 +1,8 @@
 # Team Intro — Micro Game Platformer (Godot 4)
 
 Micro game perkenalan tim proyek akhir bergaya **platformer side-scrolling**.
-Di awal, pemain **memilih karakter**: tiap karakter berkepala **foto wajah anggota
-yang di-pixelate**, lengkap dengan Nama, NIM, dan peran. Setelah itu pemain berlari
+Di awal, pemain **memilih karakter**: tiap anggota tampil sebagai **karakter pixel art
+badan penuh**, lengkap dengan Nama, NIM, dan peran. Setelah itu pemain berlari
 dan melompat melewati level bergaya pastel (pelangi, awan, tanah kue, balok permen),
 mengumpulkan bintang, menginjak musuh blob, dan menemui
 **papan tiap anggota** (sekaligus checkpoint) yang menampilkan kartu perkenalan.
@@ -25,14 +25,27 @@ Jatuh ke jurang atau tersentuh musuh dari samping → muncul lagi di papan anggo
 
 ## Mengganti data tim (WAJIB)
 Edit `data/team.json`: `team_name`, lalu `name`, `nim`, `role`, `fact`, `color` tiap anggota.
-`color` = warna baju karakter dan bingkai fotonya.
+`color` = warna bingkai, pita peran, dan kartu anggota.
 
-Foto wajah:
+## Karakter anggota
+Setiap anggota punya karakter **pixel art badan penuh** sendiri:
+
+| Anggota | Peran | Gambar | Scene |
+|---|---|---|---|
+| 1 | Programmer (kerudung pink) | `assets/photos/member1.png` | `scenes/player_1.tscn` |
+| 2 | Artist (kerudung hitam) | `assets/photos/member2.png` | `scenes/player_2.tscn` |
+| 3 | Project + Level (rambut panjang) | `assets/photos/member3.png` | `scenes/player_3.tscn` |
+
+Ketiga scene mewarisi `player.tscn`, jadi gerakannya sama; hanya gambar badannya yang beda.
+Wajah untuk papan anggota dan HUD dipotong otomatis dari bagian atas gambar.
+
+Membuat ulang gambar karakter dari gambar pixel art besar berlatar polos:
 ```bash
-pip install pillow
-python tools/pixelate.py foto_asli.jpg assets/photos/member1.png
+pip3 install pillow numpy scipy
+python3 tools/make_character.py gambar_programmer.jpg assets/photos/member1.png
 ```
-Foto asli simpan di `assets/photos/raw/` (sudah di-ignore, tidak ikut ke GitHub).
+Tool ini membuang latar dan bayangan, lalu mengecilkan gambar tepat mengikuti kotak pixel aslinya.
+Kalau masih berupa foto asli, pixelate dulu dengan `tools/pixelate.py`.
 
 ## Mengedit level (`data/level1.txt`)
 Level digambar dengan karakter teks, 1 karakter = 1 tile 16×16 px.
@@ -59,7 +72,8 @@ Buka scene-nya di Godot untuk melihat node dan collision-nya; tampilannya juga m
 | Scene | Node utama | Isi (node gambar = Sprite2D / AnimatedSprite2D) | Script |
 |---|---|---|---|
 | `main.tscn` | Node2D | SkyLayer, World (LevelArt + objek level), HUD, InfoPopup, SelectScreen | `main.gd` |
-| `player.tscn` | CharacterBody2D | CollisionShape2D, Camera2D, Visual (Shadow, Limbs: idle/walk/jump, Shirt, Head: RingWhite, RingColor, Photo) | `player.gd` |
+| `player.tscn` | CharacterBody2D | scene dasar karakter: CollisionShape2D, Camera2D, Visual (Shadow, Body) | `player.gd` |
+| `player_1.tscn` / `player_2.tscn` / `player_3.tscn` | mewarisi `player.tscn` | Body diganti gambar badan penuh anggota 1 / 2 / 3 | `player.gd` |
 | `enemy.tscn` | CharacterBody2D | Sprite (wobble/dead), CollisionShape2D, EdgeRay, Hitbox | `enemy.gd` |
 | `coin.tscn` | Area2D | Sprite (bintang), CollisionShape2D | `coin.gd` |
 | `member_sign.tscn` | Area2D | Pole, Board (Back, Front, RingColor, Photo, RoleLabel, Heart, Check), CollisionShape2D | `member_sign.gd` |
@@ -77,7 +91,7 @@ Angka gerak player (Speed, Jump Velocity, Gravity) dan musuh (Speed) bisa diubah
 
 | File | Isi | Pemilik |
 |---|---|---|
-| `scenes/player.tscn`, `scripts/player.gd` | fisika lari, lompat, karakter berkepala foto | Programmer |
+| `scenes/player.tscn`, `scenes/player_1-3.tscn`, `scripts/player.gd` | fisika lari, lompat (berlaku untuk ketiga karakter) | Programmer |
 | `scenes/enemy.tscn`, `scripts/enemy.gd` | musuh & logika injak | Programmer |
 | `scripts/main.gd`, `scenes/main.tscn` | alur game, pembaca level, kamera, HUD | Programmer |
 | `scripts/select_screen.gd`, `scripts/info_popup.gd` | layar pilih karakter & kartu anggota | Programmer / Artist |
@@ -109,7 +123,7 @@ Kolom: **To Do → In Progress → Review → Done**
 | Fisika player: lari & lompat | Programmer |
 | Musuh + mekanik injak | Programmer |
 | Layar pilih karakter & kartu anggota | Programmer |
-| Pixelate foto wajah 3 anggota | Artist |
+| Gambar karakter pixel art 3 anggota | Artist |
 | Gambar tile, latar pastel, efek partikel | Artist |
 | Desain level 1 (`level1.txt`) | Project + Level |
 | Isi data tim (Nama, NIM, peran) | Project + Level |

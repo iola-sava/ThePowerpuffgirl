@@ -1,8 +1,8 @@
 extends Node2D
 ## Scene: res://scenes/main.tscn
 ## Micro game "Team Intro" versi platformer.
-## Pilih karakter (kepalanya foto anggota) -> lari & lompat -> temui papan tiap
-## anggota (checkpoint) -> kumpulkan koin -> sentuh bendera finish.
+## Pilih karakter (gambar badan penuh tiap anggota) -> lari & lompat -> temui papan
+## tiap anggota (checkpoint) -> kumpulkan bintang -> sentuh bendera finish.
 ##
 ## Data anggota : res://data/team.json
 ## Peta level   : res://data/level1.txt  (lihat legenda di README)
@@ -11,9 +11,9 @@ extends Node2D
 const TILE := 16
 const DATA_PATH := "res://data/team.json"
 const LEVEL_PATH := "res://data/level1.txt"
-const PHOTO_PIXELS := 20
-
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
+## Scene karakter anggota ke-1, 2, 3 (urutan sama dengan team.json).
+const PLAYER_SCENE_PATH := "res://scenes/player_%d.tscn"
 const ENEMY_SCENE := preload("res://scenes/enemy.tscn")
 const COIN_SCENE := preload("res://scenes/coin.tscn")
 const MEMBER_SIGN_SCENE := preload("res://scenes/member_sign.tscn")
@@ -24,7 +24,8 @@ enum State { SELECT, PLAY, POPUP, END }
 var state := State.SELECT
 var team_name := "Tim Kami"
 var members: Array = []
-var photos: Array = []
+var photos: Array = []  # gambar badan penuh
+var faces: Array = []   # potongan wajah (papan anggota & HUD)
 var colors: Array = []
 
 @onready var world: Node2D = $World
@@ -46,7 +47,6 @@ var chosen_index := 0
 func _ready() -> void:
 	_load_data()
 	_build_level()
-	_spawn_player()
 	_build_hud()
 
 	select_screen.team_name = team_name
@@ -74,7 +74,9 @@ func _load_data() -> void:
 	for m in members:
 		var col := Color.html(str(m.get("color", "#4361ee")))
 		colors.append(col)
-		photos.append(PhotoUtil.load_pixelated(str(m.get("photo", "")), PHOTO_PIXELS, col))
+		var body := PhotoUtil.load_photo(str(m.get("photo", "")), col)
+		photos.append(body)
+		faces.append(PhotoUtil.face(body))
 
 
 # ---------------- level ----------------
@@ -107,7 +109,7 @@ func _build_level() -> void:
 						post.index = idx
 						post.data = members[idx]
 						post.color = colors[idx]
-						post.photo = photos[idx]
+						post.photo = faces[idx]
 						post.position = foot
 						post.reached.connect(_on_member_reached)
 						world.add_child(post)
@@ -166,11 +168,15 @@ func _spawn(scene: PackedScene, pos: Vector2) -> Node2D:
 	return node
 
 
-func _spawn_player() -> void:
-	player = PLAYER_SCENE.instantiate()
+func _spawn_player(i: int) -> void:
+	var path := PLAYER_SCENE_PATH % (i + 1)
+	if ResourceLoader.exists(path):
+		player = load(path).instantiate()  # karakter anggota dengan gambarnya sendiri
+	else:
+		player = PLAYER_SCENE.instantiate()
+		player.photo = photos[i]
 	player.position = respawn_point
-	player.photo = photos[0]
-	player.color = colors[0]
+	player.color = colors[i]
 	player.fall_limit = level_size.y * TILE + 48
 	player.died.connect(_on_player_died)
 	world.add_child(player)
@@ -212,7 +218,7 @@ func _pill(x: float, text: String, icon: int) -> float:
 		1:
 			UI.heart(hud, ic + Vector2(0, -1), 3.4, UI.PINK)
 		2:
-			UI.circle_photo(hud, photos[chosen_index], ic, 6.5, colors[chosen_index], 1.0)
+			UI.circle_photo(hud, faces[chosen_index], ic, 6.5, colors[chosen_index], 1.0)
 	hud.draw_string(UI.BOLD, r.position + Vector2(24, 17), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UI.INK)
 	return x + w + 8.0
 
@@ -232,9 +238,7 @@ func _draw_hud() -> void:
 # ---------------- events ----------------
 func _on_character_chosen(i: int) -> void:
 	chosen_index = i
-	player.photo = photos[i]
-	player.color = colors[i]
-	player.queue_redraw()
+	_spawn_player(i)
 	state = State.PLAY
 	get_tree().paused = false
 	_update_hud()
@@ -269,7 +273,7 @@ func _on_finish_reached(_flag: FinishFlag) -> void:
 func _open_popup(p: MemberSign) -> void:
 	state = State.POPUP
 	get_tree().paused = true
-	popup.show_member(p.data, p.photo, p.color, _met_count(), member_posts.size())
+	popup.show_member(p.data, photos[p.index], p.color, _met_count(), member_posts.size())
 	Fx.burst(self, p.global_position + Vector2(0, -44), UI.PINK, 10, 70.0, Fx.Shape.HEART, 2.2)
 
 

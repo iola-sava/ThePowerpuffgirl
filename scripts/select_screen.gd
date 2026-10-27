@@ -69,7 +69,16 @@ func _on_draw() -> void:
 		var r := Rect2(x0 + i * (cw + gap), 100.0 - lift, cw, 196)
 		c.draw_style_box(UI.box(Color(0.36, 0.29, 0.43, 0.15), 18), Rect2(r.position + Vector2(0, 5 + lift), r.size))
 		c.draw_style_box(UI.box(UI.CREAM, 18, col if is_sel else Color.WHITE, 4 if is_sel else 2), r)
-		UI.circle_photo(c, photos[i], r.position + Vector2(cw / 2.0, 62), 40.0, col, 3.0)
+		# gambar badan penuh, berdiri di atas lingkaran warna anggota
+		c.draw_circle(r.position + Vector2(cw / 2.0, 66), 42.0, Color(col, 0.22))
+		var tex: Texture2D = photos[i]
+		var sz := tex.get_size() * 2.0
+		var feet := r.position + Vector2(cw / 2.0, 108)
+		c.draw_set_transform(feet + Vector2(0, 1), 0.0, Vector2(1.0, 0.3))
+		c.draw_circle(Vector2.ZERO, 12.0, Color(0.36, 0.29, 0.43, 0.25))
+		c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		var bob := -absf(sin(_t * 8.0)) * 3.0 if is_sel else 0.0
+		c.draw_texture_rect(tex, Rect2(feet + Vector2(-sz.x / 2.0, -sz.y + bob), sz), false)
 		c.draw_string(UI.BOLD, r.position + Vector2(6, 128), str(m.get("name", "")),
 			HORIZONTAL_ALIGNMENT_CENTER, cw - 12, 13, UI.INK)
 		c.draw_string(UI.BODY, r.position + Vector2(6, 146), "NIM " + str(m.get("nim", "")),
